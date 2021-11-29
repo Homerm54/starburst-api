@@ -27,7 +27,7 @@ app.use(cors(corsOptions));
 
 /** Error handling */
 app.get('/', (req, res) => {
-  res.send('Hello World!')
+  res.send({ online: true, ok: true });
 });
 
 /** Server */
