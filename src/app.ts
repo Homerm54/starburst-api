@@ -14,6 +14,7 @@ app.use(express.json());
 const whiteList = ['http://localhost:3000/', 'https://personal-organizer-app.herokuapp.com/'];
 const corsOptions : cors.CorsOptions  = {
   origin: function (origin, callback) {
+    console.log(origin);
     if (!origin || whiteList.indexOf(origin) !== -1) {
       callback(null, true)
     } else {
