@@ -1,6 +1,7 @@
 import express, { Express } from 'express';
 import morgan from 'morgan';
 import cors from 'cors';
+import { statusRouter } from './routes/status';
 
 const app: Express = express();
 
@@ -25,14 +26,16 @@ const corsOptions : cors.CorsOptions  = {
 /** Allow Cross Site request from */
 app.use(cors(corsOptions));
 
+// Status endpoints
+app.use(statusRouter);
+
+// IN DESIGN: AUTH ENDPOINTS
+
 /** Error handling */
 app.get('/', (req, res) => {
   res.send({ online: true, ok: true });
 });
 
 /** Server */
-const PORT: any = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Example app listening at http://localhost:${PORT}`)
-})
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Web App Server ready on port: ${PORT}`))

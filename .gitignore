@@ -2,3 +2,9 @@ node_modules
 
 # TypeScript Build Folder
 build
+
+#env files
+.env
+
+#Custom
+notrack/

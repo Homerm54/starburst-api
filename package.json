@@ -2,9 +2,9 @@
   "name": "api",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.ts",
   "scripts": {
-    "dev": "nodemon app.ts",
+    "dev": "nodemon src/app.ts",
     "start": "node build/src/app.js",
     "build": "tsc",
     "postinstall": "npm run build"
