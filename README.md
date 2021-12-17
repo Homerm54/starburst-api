@@ -9,8 +9,3 @@
 ## OpenAPI Specification
 
 [OpenAPI Official Page](https://www.openapis.org/)
-
-## Swagger
-
-Swagger are tools that helps the developer implement the OpenAPI specificarion
-[Swagger vs OpenAPI](https://swagger.io/blog/api-strategy/difference-between-swagger-and-openapi/)
