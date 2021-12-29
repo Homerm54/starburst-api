@@ -10,6 +10,7 @@
     "strict": true,
     "baseUrl": "./src",
     "paths": {
+      "src/*": ["./*"],
       "database": ["database/index"],
       "database/*": ["database/*"],
       "middleware/*": ["middleware/*"],

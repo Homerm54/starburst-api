@@ -1,12 +1,16 @@
 import express, { Express } from 'express';
 import cors from 'cors';
-import { statusRouter } from 'routes/status';
-import { httpLogger } from 'middleware/logger';
 import { db } from 'database';
 import helmet from 'helmet';
 
+import { statusRouter } from 'routes/status';
+import { authRouter } from 'routes/auth';
+
+import { httpLogger } from 'middleware/logger';
+
 const app: Express = express();
 
+// ---------------- MIDDLEWARES ------------------------
 app.use(helmet());
 app.use(httpLogger);
 // parse application/json body type, the only one supported by this API
@@ -26,11 +30,17 @@ const corsOptions : cors.CorsOptions  = {
 /** Allow Cross Site request from */
 app.use(cors(corsOptions));
 
-// Status endpoints
+
+// ---------------- ROUTES ------------------------
+// SERVER STATUS ENDPOINT 
 app.use(statusRouter);
 
-// IN DESIGN: AUTH ENDPOINTS
+// AUTH ENDPOINTS
+app.use('/auth', authRouter);
 
+
+// ---------------- SERVER INIT ------------------------
+// first connect to database, then start listen to request on PORT
 db.init()
   .then(() => {
     /** Server */

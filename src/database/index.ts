@@ -4,12 +4,13 @@ import debug from 'debug';
 const logger = debug('db'); 
 
 interface IDB {
+  // --------------------- Properties / Fields
   /** Instance of mongoose's connection with the database for raw operations */
   instance: null | mongoose.Connection;
-  /** Whether the instance is currently connected to Mongo and able to process requests */
+  /** Whether the instance is currently connected to Mongo and is able to process requests */
   connected: boolean;
 
-  // Methods
+  // --------------------- Methods
   /** 
    * Init the MongoDB connection.
    * This method creates a single connection with mongo, multi-mongo is not supported.
