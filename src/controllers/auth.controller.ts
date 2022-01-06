@@ -1,9 +1,58 @@
+/**
+ * @module Authentication
+ * @file Middlewares and Endpoints related to the authentication and authorization service inside the API.
+ * @author Omer Marquez <omer.marquezt@gmail.com>
+ * 
+ * This file, along with the middlewares and endpoints are the single source of coode from where all the
+ * authentication service live. Hence, here is defined how the Auth Service work, caveats and general rules.
+ * 
+ * ## Tokens
+ * 
+ * The auth service is token drived, which means that request to secured routes are checked with the
+ * **authorization** token in the header of the request. Two types of tokens are used, **Access Token**
+ * and **Refresh Tokens**.
+ * 
+ * ### Access Tokens
+ * This tokens are short live (less that an hour), and are the one that carries the information needed to
+ * see who is requesting, access level, and other details needed to process the request. Anyone who holds
+ * this token can interact with the API and it's routes, hence, it's important to keep then safetly store.
+ * 
+ * Because of the power of this tokens they are short lived, if an evil user intercepts the token, there's
+ * only a short frame for what the user can do.
+ * 
+ * ### Refresh Tokens
+ * Once an Access Token expires, a new one must be generated to keep interacting with the API. To avoid having
+ * to reauthenticate every 15 minutes or so, a Refresh token is also issued along with the Access Token when
+ * authenticated, using this token, a new Access Token can be generated without the need to send credentials
+ * again to the server.
+ * 
+ * The refresh token has a lifespam of up to 1 month, this way, a user can be singed client side up to 1 month,
+ * without requiring to sign in again (authenticate again).
+ * 
+ * ### Rotatory Refresh Token System
+ * Because of the power of generating infinite access tokens, a **Rotatory Refresh Token System** is implemented,
+ * this way, the absolute lifespam of the token pair is reduced, an in case an evil user intercepts any of the
+ * tokens, the system can identify when a refresh token is reused, and log the user out of the system for security.
+ * 
+ * This method lets the user by forever authenticated, as long as no token re-use is detected by the auth system or
+ * no refesh token is expired due to **max inactive time**.
+ * 
+ * The system will work storing the tokens in the database, keeping a "token history" for every user. How many
+ * tokens are stored determines for how long the system is able to detect a reutilization of tokens.
+ * 
+ * ## Sign Out
+ * The sign out process just invalidates any active token, needing to sign in again on every device.
+ * 
+ * @see folder: designs/auth for diagrams on the process
+ */
+
 import { Request, Response, NextFunction } from 'express';
 import { UserModel } from 'database/models/user';
 import debug from 'debug';
-import bcrypt from 'bcrypt';
-import { devMode } from 'src/constants';
-import { verifyJWT, generateJWT } from 'src/utils/JWT';
+import { verifyAccessToken, generateAccessToken, TokenError } from 'src/lib/auth-tokens';
+import { variables } from 'src/lib/config';
+
+const { devMode } = variables;
 
 const log = debug('auth:controller');
 
@@ -33,28 +82,25 @@ export const validateJWT = async (req: Request, res: Response, next: NextFunctio
     return res.status(403).json({
       error: true,
       code: 'unauthorized',
-      message: devMode? 'Missing Authentication token' : 'Unauthorized request',
+      message: devMode? 'Missing Authentication token' : 'Unauthorized Request',
     });
   }
 
   try {
-    const uid = await verifyJWT(token);
-
+    const uid = await verifyAccessToken(token);
     if (uid) {
       req.body.uid = uid;
       next();
     }
   } catch (error) {
-    console.error(error);
-    if (error === 'Error decoding the JWT') {
-      return res.status(401).json({
-        error: true,
-        code: 'unauthorized',
-        message: devMode? 'Error verifying the token' : 'Unauthorized request',
-      });
-    }
+    let code = 'unknow';
+    if (error instanceof TokenError) code = error.code;
 
-    return res.status(500).json({ error: true, code: 'unknown-error' });
+    return res.status(401).json({
+      code,
+      error: true,
+      message: 'Unauthorized Request',
+    });
   }
 }
 
@@ -81,7 +127,7 @@ export const createUser = async (req: Request, res: Response) => {
     await newUser.save();
 
     // Generate a token to allow client's subsequent calls to endpoint authenticated
-    const token = await generateJWT(newUser.id);
+    const token = await generateAccessToken(newUser.id);
     return res.status(200).json({ ok: true, token });
   } catch (error) {
     console.error(error);
@@ -113,7 +159,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     return res.status(400).json({
       error: true,
       code: 'unauthorized',
-      message: devMode? 'Invalid Password' : 'Unauthorized request',
+      message: devMode? 'Invalid Password' : 'Unauthorized Request',
     });
   }
 
@@ -134,7 +180,7 @@ export const updateUser = async (req: Request, res: Response) => {
 }
 
 /**
- * Check the password and email, if user found generate JWT.
+ * Check the password and email and generate a JWT with new refresh token.
  */
 export const signIn = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -157,9 +203,18 @@ export const signIn = async (req: Request, res: Response) => {
     });
   }
 
-  const token = await generateJWT(user.id);
+  const token = await generateAccessToken(user.id);
   return res.json({ ok: true, token });
 };
+
+/**
+ * TODO: 
+ * Delete the refresh token of the user from db to make it unusable anymore
+ */
+export const signOut = async (req: Request, res: Response) => {
+  // Delete refresh token
+
+}
 
 
 /**
@@ -172,10 +227,11 @@ export const signIn = async (req: Request, res: Response) => {
  * Also, implement a "Token Family" history to keep track of old
  * refresh tokens used, and log the user out.
  * 
- * Usefull links: 
- * - https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/
- * - https://auth0.com/blog/complete-guide-to-nodejs-express-user-authentication/
- * - https://auth0.com/docs/authorization/flows#authorization-code-flow-with-proof-key-for-code-exchange-pkce-
+ * Useful links: 
+ * - https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/ -> Introduction, worth rereading before doing the diagrams
+ * - https://hasura.io/blog/best-practices-of-using-jwt-with-graphql/ -> A little bit of everything
+ * - https://auth0.com/docs/security/tokens/refresh-tokens/refresh-token-rotation -> Read this a little bit
+ * - https://www.bezkoder.com/jwt-refresh-token-node-js-mongodb/ -> refresh token schema guide without rotation
  * 
  */
 export const refreshAccessToken = () => {

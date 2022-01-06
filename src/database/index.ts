@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import debug from 'debug';
+import { variables } from 'src/lib/config';
 
 const logger = debug('db'); 
 
@@ -29,11 +30,7 @@ interface IDB {
   close: () => Promise<void>;
 }
 
-// Constants and validator out of scope, if not in .env vars, crash right away
-const dbUser = process.env.DB_USER;
-const dbPassword = process.env.DB_PASSWORD;
-if (!dbUser || !dbPassword) throw Error('Missing DB username and/or password');
-const uri = `mongodb+srv://${dbUser}:${dbPassword}@cluster0.nt8vz.mongodb.net/personal-app?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${variables.DB_USER}:${variables.DB_PASSWORD}@cluster0.nt8vz.mongodb.net/personal-app?retryWrites=true&w=majority`;
 
 /**
  * Unique DB connection object with methods and variables to easy access across the project.

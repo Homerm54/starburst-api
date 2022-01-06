@@ -7,6 +7,7 @@ import { statusRouter } from 'routes/status';
 import { authRouter } from 'routes/auth';
 
 import { httpLogger } from 'middleware/logger';
+import { variables } from './lib/config';
 
 const app: Express = express();
 
@@ -44,8 +45,7 @@ app.use('/auth', authRouter);
 db.init()
   .then(() => {
     /** Server */
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`REST API ready on port: ${PORT}`));
+    app.listen(variables.PORT, () => console.log(`REST API ready on port: ${variables.PORT}`));
   })
   .catch((error) => {
     console.error(error);

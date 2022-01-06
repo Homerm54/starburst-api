@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.ts",
   "scripts": {
-    "dev": "set DEBUG=auth:controller,jwt && nodemon -r dotenv/config -r tsconfig-paths/register src/app.ts",
+    "dev": "set DEBUG=auth:controller,tokens && nodemon -r dotenv/config -r tsconfig-paths/register src/app.ts",
     "start": "node -r dotenv/config -r ./tsconfig-paths-bootstrap.js build/src/app.js",
     "build": "tsc",
     "postinstall": "npm run build"
@@ -23,6 +23,7 @@
     "mongoose": "^6.1.2",
     "morgan": "^1.10.0",
     "tsconfig-paths": "^3.12.0",
+    "uuid": "^8.3.2",
     "validator": "^13.7.0"
   },
   "devDependencies": {
