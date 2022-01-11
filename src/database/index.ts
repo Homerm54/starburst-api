@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import debug from 'debug';
-import { variables } from 'src/lib/config';
+import { variables } from 'lib/config';
 
 const logger = debug('db'); 
 

@@ -2,12 +2,11 @@ import express, { Express } from 'express';
 import cors from 'cors';
 import { db } from 'database';
 import helmet from 'helmet';
-
 import { statusRouter } from 'routes/status';
-import { authRouter } from 'routes/auth';
-
-import { httpLogger } from 'middleware/logger';
-import { variables } from './lib/config';
+import { authRouter } from 'auth/routes';
+import { httpLogger } from 'middlewares/logger';
+import { variables } from 'lib/config';
+import { notFound, errorHandler } from 'middlewares/errors';
 
 const app: Express = express();
 
@@ -39,6 +38,9 @@ app.use(statusRouter);
 // AUTH ENDPOINTS
 app.use('/auth', authRouter);
 
+// Last handlers
+app.use(notFound);
+app.use(errorHandler);
 
 // ---------------- SERVER INIT ------------------------
 // first connect to database, then start listen to request on PORT

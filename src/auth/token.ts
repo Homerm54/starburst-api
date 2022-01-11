@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import debug from 'debug';
-import { variables } from './config';
+import { variables } from 'lib/config';
 
 const log = debug('tokens');
 

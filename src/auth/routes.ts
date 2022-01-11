@@ -1,6 +1,10 @@
 import express from 'express';
-import { checkEmailInUse, createUser, deleteUser, signIn, updateUser, validateJWT } from 'controllers/auth.controller';
+import { invalidHTTP } from 'middlewares/errors';
+import { checkEmailInUse, createUser, deleteUser, signIn, updateUser, validateJWT } from './auth.controller';
 
+/**
+ * Router to connect all the authentication related services available by the API
+ */
 const authRouter = express.Router();
 
 /**
@@ -9,7 +13,9 @@ const authRouter = express.Router();
  */
 authRouter.post('/create', checkEmailInUse, createUser);
 
-// TODO: update route
+/**
+ * 
+ */
 authRouter.post('/update', validateJWT, updateUser);
 
 /**
@@ -19,5 +25,7 @@ authRouter.post('/update', validateJWT, updateUser);
 authRouter.delete('/delete', validateJWT, deleteUser);
 
 authRouter.post('/signin', /* Email and password validation */ signIn);
+
+authRouter.use(invalidHTTP);
 
 export { authRouter };

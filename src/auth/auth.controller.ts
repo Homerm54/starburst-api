@@ -49,8 +49,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserModel } from 'database/models/user';
 import debug from 'debug';
-import { verifyAccessToken, generateAccessToken, TokenError } from 'src/lib/auth-tokens';
-import { variables } from 'src/lib/config';
+import { verifyAccessToken, generateAccessToken, TokenError } from 'auth/token';
+import { variables } from 'lib/config';
+import { ServerError } from 'middlewares/errors';
 
 const { devMode } = variables;
 
@@ -64,7 +65,10 @@ export const checkEmailInUse = async (req: Request, res: Response, next: NextFun
   const { email } = req.body;
 
   const one = await UserModel.findOne({ email });
-  if (one) return res.status(400).json({ error: true, message: 'Email already in use', code: 'email-in-use' });
+  if (one) {
+    next(new ServerError(400, 'email-in-use', 'Email already in use'));
+    return;
+  };
 
   next();
 }
@@ -79,11 +83,8 @@ export const validateJWT = async (req: Request, res: Response, next: NextFunctio
   const token = authHeader && typeof authHeader === 'string' && authHeader.split(' ')[1]; // Split the Bearer <token>
 
   if (!token) {
-    return res.status(403).json({
-      error: true,
-      code: 'unauthorized',
-      message: devMode? 'Missing Authentication token' : 'Unauthorized Request',
-    });
+    next(new ServerError(403, 'unauthorized', devMode ? 'Missing Authentication token' : 'Unauthorized Request'));
+    return;
   }
 
   try {
@@ -96,11 +97,7 @@ export const validateJWT = async (req: Request, res: Response, next: NextFunctio
     let code = 'unknow';
     if (error instanceof TokenError) code = error.code;
 
-    return res.status(401).json({
-      code,
-      error: true,
-      message: 'Unauthorized Request',
-    });
+    next(new ServerError(401, code, 'Unauthorized Request'));
   }
 }
 
@@ -109,7 +106,7 @@ export const validateJWT = async (req: Request, res: Response, next: NextFunctio
  * Creates a new user, with the given data, inserting it into the database.
  * If successfull, generates a JWT logging the user in.
  */
-export const createUser = async (req: Request, res: Response) => {
+export const createUser = async (req: Request, res: Response, next: NextFunction) => {
   // Create user with the value passed via req
   const { email, password } = req.body;
 
@@ -118,8 +115,8 @@ export const createUser = async (req: Request, res: Response) => {
   if (password.length < 6 || password.length > 12) {
     const code = 'invalid-password';
     let message = 'Invalid Password, length type is incorrect';
-
-    return res.status(400).json({ error: true, code, message });
+    next(new ServerError(400, code, message));
+    return;
   }
 
   try {
@@ -131,7 +128,7 @@ export const createUser = async (req: Request, res: Response) => {
     return res.status(200).json({ ok: true, token });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: true, code: 'unknown-error' });
+    next(new ServerError(500, 'unknown-error'));
   }
 };
 
@@ -140,27 +137,21 @@ export const createUser = async (req: Request, res: Response) => {
  * uid is required form the req.body, so it must be there, better getting it from the
  * JWTValidator.
  */
-export const deleteUser = async (req: Request, res: Response) => {
+export const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
   // Delete the user with the given password, also a protected route.
   const { uid, password } = req.body;
   log(`Deletiing user: ${uid}`);
 
   const user = await UserModel.findOne({ _id: uid });
   if (!user) {
-    return res.status(400).json({
-      error: true,
-      message: 'User not found',
-      code: 'user-not-found',
-    });
+    next(new ServerError(400, 'user-not-found', 'User not found'));
+    return;
   }
 
   const match = await user.isValidPassword(password);
   if (!match) {
-    return res.status(400).json({
-      error: true,
-      code: 'unauthorized',
-      message: devMode? 'Invalid Password' : 'Unauthorized Request',
-    });
+    next(new ServerError(400, 'unauthorized', devMode ? 'Invalid Password' : 'Unauthorized Request'));
+    return;
   }
 
   try {
@@ -168,7 +159,7 @@ export const deleteUser = async (req: Request, res: Response) => {
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: true, code: 'unknown-error' });
+    next(new ServerError(500, 'unknow-error'));
   }
 };
 
@@ -182,25 +173,19 @@ export const updateUser = async (req: Request, res: Response) => {
 /**
  * Check the password and email and generate a JWT with new refresh token.
  */
-export const signIn = async (req: Request, res: Response) => {
+export const signIn = async (req: Request, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
   const user = await UserModel.findOne({ email });
 
   if (!user) {
-    return res.status(400).json({
-      error: true,
-      message: 'User not found',
-      code: 'user-not-found',
-    });
+    next(new ServerError(400, 'user-not-found', 'User not found'));
+    return;
   }
 
   const match = await user.isValidPassword(password);
   if (!match) {
-    return res.status(400).json({
-      error: true,
-      message: 'Unable to authenticate',
-      code: 'auth-failed',
-    });
+    next(new ServerError(400, 'auth-failed', 'Unable to authenticate'));
+    return;
   }
 
   const token = await generateAccessToken(user.id);
@@ -235,5 +220,5 @@ export const signOut = async (req: Request, res: Response) => {
  * 
  */
 export const refreshAccessToken = () => {
-
+  // todo
 };
