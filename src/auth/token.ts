@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import debug from 'debug';
 import { variables } from 'lib/config';
+import { tokenConfig } from './config';
 
 const log = debug('tokens');
 
@@ -32,7 +33,7 @@ export const generateAccessToken = (uid: string): Promise<string> => {
 
   return new Promise((resolve, reject) => {
     // Coerced to string using JSON.stringify
-    jwt.sign({ uid }, variables.JWT_SECRET_KEY, { expiresIn: '15m' }, (err, token) => {
+    jwt.sign({ uid }, variables.JWT_SECRET_KEY, { expiresIn: tokenConfig.accessTokenExpireTime }, (err, token) => {
       if (err || !token) {
         if (!token) log('Sign function didn\'t generate any token');
 

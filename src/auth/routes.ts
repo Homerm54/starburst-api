@@ -1,6 +1,6 @@
 import express from 'express';
 import { invalidHTTP } from 'middlewares/errors';
-import { checkEmailInUse, createUser, deleteUser, signIn, updateUser, validateJWT } from './auth.controller';
+import { checkEmailInUse, createUser, deleteUser, refreshAccessToken, signIn, signOut, updateCredentials, validateJWT } from './controller';
 
 /**
  * Router to connect all the authentication related services available by the API
@@ -16,15 +16,17 @@ authRouter.post('/create', checkEmailInUse, createUser);
 /**
  * 
  */
-authRouter.post('/update', validateJWT, updateUser);
+authRouter.post('/update-credentials', validateJWT, updateCredentials);
 
 /**
  * Status endpoint, currently doesn't check anything, just return ok
  * which means that the server is active and can recieve requests
  */
-authRouter.delete('/delete', validateJWT, deleteUser);
+authRouter.delete('/', validateJWT, deleteUser);
 
 authRouter.post('/signin', /* Email and password validation */ signIn);
+authRouter.post('/signout', validateJWT, signOut);
+authRouter.post('/refresh-access-token', refreshAccessToken);
 
 authRouter.use(invalidHTTP);
 

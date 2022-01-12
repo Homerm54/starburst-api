@@ -19,6 +19,9 @@ export interface User extends ITimestamps, Document {
   /** Password of the user, encrypted and with custom getter to return undefined */
   password: string;
 
+  /** Whether the user is admin or not */
+  isAdmin: Boolean;
+
   // Methods
   /**
    * Check if a password passed belongs to the user.
@@ -28,20 +31,21 @@ export interface User extends ITimestamps, Document {
   isValidPassword: (password: string) => Promise<boolean>;
 }
 
-const UserSchema = new Schema<User>({
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    lowercase: true,
+const UserSchema = new Schema<User>(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
 
-    validate: [
-      {
-        validator: (value: string) => validator.isEmail(value),
-        message: 'Invalid email passed',
-      },
-    ],
-  },
+      validate: [
+        {
+          validator: (value: string) => validator.isEmail(value),
+          message: 'Invalid email passed',
+        },
+      ],
+    },
     password: {
       type: String,
       required: true,
@@ -49,6 +53,10 @@ const UserSchema = new Schema<User>({
       // access to the password through user.get('password', null, { getters: false }),
       // this extra step makes sure that password won't be leaked accidentaly
       get: () => undefined,
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
     },
   },
   {

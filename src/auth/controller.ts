@@ -52,6 +52,7 @@ import debug from 'debug';
 import { verifyAccessToken, generateAccessToken, TokenError } from 'auth/token';
 import { variables } from 'lib/config';
 import { ServerError } from 'middlewares/errors';
+import { RefreshToken } from 'database/models/tokens';
 
 const { devMode } = variables;
 
@@ -78,7 +79,6 @@ export const checkEmailInUse = async (req: Request, res: Response, next: NextFun
  * user id inside `req.body.uid`.
  */
 export const validateJWT = async (req: Request, res: Response, next: NextFunction) => {
-  console.log(req.headers)
   const authHeader = req.headers['authorization'];
   const token = authHeader && typeof authHeader === 'string' && authHeader.split(' ')[1]; // Split the Bearer <token>
 
@@ -101,6 +101,30 @@ export const validateJWT = async (req: Request, res: Response, next: NextFunctio
   }
 }
 
+/**
+ * Authorization wall to block non-admin users requests.
+ */
+export const validateAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  const { uid } = req.body;
+
+  if (!uid) {
+    next(new ServerError(400, 'missing-uid', 'Missing UID'));
+    return;
+  };
+  const user = await UserModel.findOne();
+
+  if (!user) {
+    next(new ServerError(404, 'user-not-found', 'User not found'));
+    return;
+  }
+
+  if (user.isAdmin) {
+    next();
+  } else {
+    next(new ServerError(403, 'forbidden', 'forbidden'));
+  }
+}
+  
 // --------------------- ROUTES
 /**
  * Creates a new user, with the given data, inserting it into the database.
@@ -124,8 +148,15 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     await newUser.save();
 
     // Generate a token to allow client's subsequent calls to endpoint authenticated
-    const token = await generateAccessToken(newUser.id);
-    return res.status(200).json({ ok: true, token });
+    const accessToken = await generateAccessToken(newUser.id);
+    const refreshToken = await RefreshToken.createToken(newUser);
+    res.status(200).json({
+      ok: true,
+      accessToken,
+      refreshToken,
+      isAdmin: newUser.isAdmin,
+      username: newUser.username,
+    });
   } catch (error) {
     console.error(error);
     next(new ServerError(500, 'unknown-error'));
@@ -140,7 +171,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 export const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
   // Delete the user with the given password, also a protected route.
   const { uid, password } = req.body;
-  log(`Deletiing user: ${uid}`);
+  log(`Deleting user: ${uid}`);
 
   const user = await UserModel.findOne({ _id: uid });
   if (!user) {
@@ -150,11 +181,12 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
 
   const match = await user.isValidPassword(password);
   if (!match) {
-    next(new ServerError(400, 'unauthorized', devMode ? 'Invalid Password' : 'Unauthorized Request'));
+    next(new ServerError(401, 'unauthorized', devMode ? 'Invalid Password' : 'Unauthorized Request'));
     return;
   }
 
   try {
+    await RefreshToken.findOneAndDelete({ user: user.id });
     await user.delete();
     return res.status(200).json({ ok: true });
   } catch (error) {
@@ -164,14 +196,15 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
 };
 
 /**
- * TODO: Do this
+ * TODO: Bad, raw, replace by update email and/or password
  */
-export const updateUser = async (req: Request, res: Response) => {
+export const updateCredentials = async (req: Request, res: Response) => {
   return res.json({ ok: true });
 }
 
 /**
- * Check the password and email and generate a JWT with new refresh token.
+ * Authenticate the User agains the Autentication System.
+ * Generates an brand new access token and refresh token.
  */
 export const signIn = async (req: Request, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
@@ -184,33 +217,49 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
 
   const match = await user.isValidPassword(password);
   if (!match) {
-    next(new ServerError(400, 'auth-failed', 'Unable to authenticate'));
+    next(new ServerError(401, 'auth-failed', 'Unable to authenticate'));
     return;
   }
 
-  const token = await generateAccessToken(user.id);
-  return res.json({ ok: true, token });
+  const accessToken = await generateAccessToken(user.id);
+  const refreshToken = await RefreshToken.createToken(user);
+  return res.json({
+    ok: true,
+    accessToken,
+    refreshToken,
+    username: user.username,
+    isAdmin: user.isAdmin,
+  });
 };
 
 /**
- * TODO: 
- * Delete the refresh token of the user from db to make it unusable anymore
+ * Remove the refresh token of the user from db to make it unusable anymore.
+ * This one, any attempt to reuse the token will fail, hence, the user needs to reauthenticate.
  */
-export const signOut = async (req: Request, res: Response) => {
-  // Delete refresh token
+export const signOut = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { uid } = req.body;
+    if (!uid) {
+      next(new ServerError(400, 'invalid-params', 'uid param is missing'));
+      return;
+    };
 
+    const refreshToken = await RefreshToken.findOne({ user: uid });
+    if (refreshToken) {
+      refreshToken.token = null;
+      await refreshToken.save();
+    }
+
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    next(error);
+  }
 }
 
 
 /**
- * TODO: refresh the short lived access token of an user with this.
- * 
- * With the implementation of refresh token rotation + access tokens,
- * they can actually live in the localstorage, since compromising it won't affect
- * at all.
- * 
- * Also, implement a "Token Family" history to keep track of old
- * refresh tokens used, and log the user out.
+ * Creates a new Access Token, along with a new Refresh Token, thus, generating a new token pair, as long
+ * as the Refresh Token hasn't expired, or is reused.
  * 
  * Useful links: 
  * - https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/ -> Introduction, worth rereading before doing the diagrams
@@ -219,6 +268,44 @@ export const signOut = async (req: Request, res: Response) => {
  * - https://www.bezkoder.com/jwt-refresh-token-node-js-mongodb/ -> refresh token schema guide without rotation
  * 
  */
-export const refreshAccessToken = () => {
-  // todo
+export const refreshAccessToken = async (req: Request, res: Response, next: NextFunction) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    next(new ServerError(400, 'invalid-params', 'Invalid Params passed'));
+    return;
+  }
+
+  try {
+    const token = await RefreshToken.findOne({ token: refreshToken });
+    if (!token) {
+      next(new ServerError(401, 'unauthorized', 'Invalid Token, please reauthenticate to generate a new token pair'));
+      return;
+    };
+
+    const isValid = await RefreshToken.verifyExpiration(token);
+
+    if (isValid) {
+      const user = await UserModel.findOne({ _id: token.user });
+      if (!user) {
+        next(new ServerError(401, 'unauthorized', 'Invalid Token, please reauthenticate to generate a new token pair'));
+        return;
+      }
+
+      const refreshToken = await RefreshToken.createToken(user);
+      const accessToken = await generateAccessToken(user.id);
+
+      res.status(200).json({
+        accessToken,
+        refreshToken,
+        ok: true,
+      });
+    } else {
+      next(new ServerError(403, 'expired-token', 'The refresh token has expired, please authenticate again'));
+      return;
+    }
+  } catch (error) {
+    // If reused token error, return 403 forbidden, if not, throw error
+    next(error);
+  }
 };
