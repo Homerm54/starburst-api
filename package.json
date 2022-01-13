@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "set DEBUG=auth:controller,tokens && nodemon -r dotenv/config -r tsconfig-paths/register src/app.ts",
     "start": "node -r dotenv/config -r ./tsconfig-paths-bootstrap.js build/src/app.js",
-    "build": "tsc",
-    "postinstall": "npm run build"
+    "build": "tsc && copyfiles docs/index.html build",
+    "postinstall": "npm run build",
+    "generate-docs": "redoc-cli bundle -o docs/index.html openapi.json"
   },
   "keywords": [],
   "author": "",
@@ -36,8 +37,10 @@
     "@types/morgan": "^1.9.3",
     "@types/uuid": "^8.3.4",
     "@types/validator": "^13.7.0",
+    "copyfiles": "^2.4.1",
     "crypto": "^1.0.1",
     "nodemon": "^2.0.13",
+    "redoc-cli": "^0.13.2",
     "ts-node": "^10.2.1",
     "typescript": "^4.4.3"
   }

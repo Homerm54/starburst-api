@@ -7,6 +7,7 @@ import { authRouter } from 'auth/routes';
 import { httpLogger } from 'middlewares/logger';
 import { variables } from 'lib/config';
 import { notFound, errorHandler } from 'middlewares/errors';
+import { sendAPIDocumentationFile } from 'routes/docs';
 
 const app: Express = express();
 
@@ -31,10 +32,11 @@ const corsOptions : cors.CorsOptions  = {
 app.use(cors(corsOptions));
 
 
-// ---------------- ROUTES ------------------------
-// SERVER STATUS ENDPOINT 
+// ---------------- Simple Routes 
 app.use(statusRouter);
+app.get('/api-docs', sendAPIDocumentationFile);
 
+// ------ Services
 // AUTH ENDPOINTS
 app.use('/auth', authRouter);
 
