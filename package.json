@@ -9,7 +9,8 @@
     "build": "tsc && copyfiles docs/index.html build",
     "postinstall": "npm run build",
     "generate-docs": "redoc-cli bundle -o docs/index.html openapi.json",
-    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write"
+    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
+    "lint": "eslint --fix src/**"
   },
   "keywords": [],
   "author": "",

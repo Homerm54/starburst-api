@@ -17,22 +17,24 @@ app.use(httpLogger);
 // parse application/json body type, the only one supported by this API
 app.use(express.json());
 
-const whiteList = ['http://localhost:3000', 'https://personal-organizer-app.herokuapp.com'];
-const corsOptions : cors.CorsOptions  = {
+const whiteList = [
+  'http://localhost:3000',
+  'https://personal-organizer-app.herokuapp.com',
+];
+const corsOptions: cors.CorsOptions = {
   origin: function (origin, callback) {
     if (!origin || whiteList.indexOf(origin) !== -1) {
-      callback(null, true)
+      callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'))
+      callback(new Error('Not allowed by CORS'));
     }
-  }
-}
+  },
+};
 
 /** Allow Cross Site request from */
 app.use(cors(corsOptions));
 
-
-// ---------------- Simple Routes 
+// ---------------- Simple Routes
 app.use(statusRouter);
 app.get('/api-docs', sendAPIDocumentationFile);
 
@@ -49,7 +51,9 @@ app.use(errorHandler);
 db.init()
   .then(() => {
     /** Server */
-    app.listen(variables.PORT, () => console.log(`REST API ready on port: ${variables.PORT}`));
+    app.listen(variables.PORT, () =>
+      console.log(`REST API ready on port: ${variables.PORT}`)
+    );
   })
   .catch((error) => {
     console.error(error);

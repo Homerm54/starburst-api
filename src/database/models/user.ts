@@ -1,10 +1,9 @@
-import { ITimestamps, timestampPlugIn } from "database/plugins/timestamps";
-import { Schema, model, Document } from "mongoose";
+import { ITimestamps, timestampPlugIn } from 'database/plugins/timestamps';
+import { Schema, model, Document } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
 
 const saltRounds = 12;
-
 
 /** The name of the collection in the MongoDB Database, and where user docs will be saved */
 const collectionName = 'users';
@@ -20,7 +19,7 @@ export interface User extends ITimestamps, Document {
   password: string;
 
   /** Whether the user is admin or not */
-  isAdmin: Boolean;
+  isAdmin: boolean;
 
   // Methods
   /**
@@ -61,12 +60,14 @@ const UserSchema = new Schema<User>(
   },
   {
     toJSON: { getters: true },
-    toObject: { getters: true }
+    toObject: { getters: true },
   }
 );
 
 // Virtual Methods
-UserSchema.virtual('username').get(function (this: User) { return this.email.split('@')[0]; });
+UserSchema.virtual('username').get(function (this: User) {
+  return this.email.split('@')[0];
+});
 
 // Hooks and Plugins
 UserSchema.plugin(timestampPlugIn);
@@ -74,19 +75,25 @@ UserSchema.plugin(timestampPlugIn);
 /** Encrypt the user password before saving it */
 UserSchema.pre('save', async function (next) {
   const user = this;
-  const hash = await bcrypt.hash(user.get('password', null, { getters: false }), saltRounds);
+  const hash = await bcrypt.hash(
+    user.get('password', null, { getters: false }),
+    saltRounds
+  );
 
   this.password = hash;
   next();
 });
 
 // Schema Methods
-UserSchema.methods.isValidPassword = async function(password) {
+UserSchema.methods.isValidPassword = async function (password) {
   const user = this;
-  const compare = await bcrypt.compare(password, user.get('password', null, { getters: false }));
+  const compare = await bcrypt.compare(
+    password,
+    user.get('password', null, { getters: false })
+  );
 
   return compare;
-}
+};
 
 // Single Connection Model
 const UserModel = model(collectionName, UserSchema);

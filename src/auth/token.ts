@@ -33,19 +33,24 @@ export const generateAccessToken = (uid: string): Promise<string> => {
 
   return new Promise((resolve, reject) => {
     // Coerced to string using JSON.stringify
-    jwt.sign({ uid }, variables.JWT_SECRET_KEY, { expiresIn: tokenConfig.accessTokenExpireTime }, (err, token) => {
-      if (err || !token) {
-        if (!token) log('Sign function didn\'t generate any token');
+    jwt.sign(
+      { uid },
+      variables.JWT_SECRET_KEY,
+      { expiresIn: tokenConfig.accessTokenExpireTime },
+      (err, token) => {
+        if (err || !token) {
+          if (!token) log("Sign function didn't generate any token");
 
-        console.error(err);
-        return reject('Error generating the JWT');
+          console.error(err);
+          return reject('Error generating the JWT');
+        }
+
+        log('Token: %s', token);
+        resolve(token);
       }
-
-      log('Token: %s', token);
-      resolve(token);
-    });
-  })
-}
+    );
+  });
+};
 
 /**
  * Decodes an Access Token.
@@ -59,10 +64,10 @@ export const verifyAccessToken = (token: string) => {
     jwt.verify(token, variables.JWT_SECRET_KEY, (err, payload) => {
       if (err || !payload) {
         if (err instanceof TokenExpiredError) {
-          log("Expired Token error %o", err);
+          log('Expired Token error %o', err);
           reject(new TokenError(ErrorCodes.expired));
         } else if (err instanceof JsonWebTokenError) {
-          log("Token error %o", err);
+          log('Token error %o', err);
           reject(new TokenError(ErrorCodes.bad));
         } else {
           log('Unkwon error');

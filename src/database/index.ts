@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import debug from 'debug';
 import { variables } from 'lib/config';
 
-const logger = debug('db'); 
+const logger = debug('db');
 
 interface IDB {
   // --------------------- Properties / Fields
@@ -12,20 +12,20 @@ interface IDB {
   connected: boolean;
 
   // --------------------- Methods
-  /** 
+  /**
    * Init the MongoDB connection.
    * This method creates a single connection with mongo, multi-mongo is not supported.
    * This is the first method that should be called as soon as possible in the application
    * to init DB connection.
-   * 
-   * This set a global default connection for moongose, thus, models are scoped to a 
+   *
+   * This set a global default connection for moongose, thus, models are scoped to a
    * single connection.
    * See https://mongoosejs.com/docs/connections.html#multiple_connections for more.
    * */
   init: () => Promise<void>;
 
   /**
-   * 
+   *
    */
   close: () => Promise<void>;
 }
@@ -37,7 +37,7 @@ const uri = `mongodb+srv://${variables.DB_USER}:${variables.DB_PASSWORD}@cluster
  * @todo Migth add support for some sort of event emitter to let endpoints know that should
  * not handle more calls until connection restablished
  */
-const db : IDB = {
+const db: IDB = {
   instance: null,
   connected: false,
   async init() {
@@ -74,13 +74,13 @@ const db : IDB = {
 
     logger('Closing DB connection');
     await this.instance.close(); // This will fired disconnected event that sets variable
-  }
-}
+  },
+};
 
 /**
  * Nodejs caches the mongoose import, so that this imported object
  * will be the same in other imported objects in other files.
- * 
+ *
  * Hence, this db connection will persist across files in the project.
  */
 export { db };

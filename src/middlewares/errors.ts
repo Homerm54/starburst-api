@@ -19,16 +19,20 @@ class ServerError extends Error {
 
 /**
  * Catch any error either thrown or passed to the next function across the routes.
- * If the error is not an instance of {@link ServerError}, a 500 response is send. 
+ * If the error is not an instance of {@link ServerError}, a 500 response is send.
  */
-const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+const errorHandler = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   if (err instanceof ServerError) {
     res.status(err.statusCode).json({
       error: true,
       code: err.code,
       message: err.message,
     });
-
   } else {
     res.status(500).json({
       error: true,
@@ -60,6 +64,6 @@ const invalidHTTP = (req: Request, res: Response) => {
     message: `Invalid HTTP Method: ${req.method}`,
     code: 'invalid-method',
   });
-}
+};
 
 export { ServerError, notFound, invalidHTTP, errorHandler };

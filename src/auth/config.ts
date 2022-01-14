@@ -2,5 +2,5 @@
 
 export const tokenConfig = {
   accessTokenExpireTime: '15min',
-  refreshTokenExpireTime: '30 days'
-}
+  refreshTokenExpireTime: '30 days',
+};
