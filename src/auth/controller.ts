@@ -258,14 +258,8 @@ export const signOut = async (req: Request, res: Response, next: NextFunction) =
 
 
 /**
- * Creates a new Access Token, along with a new Refresh Token, thus, generating a new token pair, as long
- * as the Refresh Token hasn't expired, or is reused.
- * 
- * Useful links: 
- * - https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/ -> Introduction, worth rereading before doing the diagrams
- * - https://hasura.io/blog/best-practices-of-using-jwt-with-graphql/ -> A little bit of everything
- * - https://auth0.com/docs/security/tokens/refresh-tokens/refresh-token-rotation -> Read this a little bit
- * - https://www.bezkoder.com/jwt-refresh-token-node-js-mongodb/ -> refresh token schema guide without rotation
+ * Creates a new Access Token, along with a new Refresh Token, thus, generating a new token pair.
+ * In case that the token has expired, or is reused, the user must sign in again to get a new pair.
  * 
  */
 export const refreshAccessToken = async (req: Request, res: Response, next: NextFunction) => {
@@ -305,7 +299,6 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
       return;
     }
   } catch (error) {
-    // If reused token error, return 403 forbidden, if not, throw error
     next(error);
   }
 };
