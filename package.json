@@ -8,7 +8,8 @@
     "start": "node -r dotenv/config -r ./tsconfig-paths-bootstrap.js build/src/app.js",
     "build": "tsc && copyfiles docs/index.html build",
     "postinstall": "npm run build",
-    "generate-docs": "redoc-cli bundle -o docs/index.html openapi.json"
+    "generate-docs": "redoc-cli bundle -o docs/index.html openapi.json",
+    "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write"
   },
   "keywords": [],
   "author": "",
@@ -37,9 +38,15 @@
     "@types/morgan": "^1.9.3",
     "@types/uuid": "^8.3.4",
     "@types/validator": "^13.7.0",
+    "@typescript-eslint/eslint-plugin": "^5.9.1",
+    "@typescript-eslint/parser": "^5.9.1",
     "copyfiles": "^2.4.1",
     "crypto": "^1.0.1",
+    "eslint": "^8.6.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
     "nodemon": "^2.0.13",
+    "prettier": "2.5.1",
     "redoc-cli": "^0.13.2",
     "ts-node": "^10.2.1",
     "typescript": "^4.4.3"
