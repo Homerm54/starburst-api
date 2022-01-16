@@ -1,467 +1,461 @@
 {
-    "openapi": "3.0.0",
-    "info": {
-        "version": "0.1.0",
-        "title": "Personal App",
-        "license": {
-            "name": "MIT"
-        },
-        "description": "A simple and custom multipurpose API"
+  "openapi": "3.0.0",
+  "info": {
+    "version": "0.1.0",
+    "title": "Starburst API",
+    "license": {
+      "name": "MIT"
     },
-    "servers": [
-        {
-            "url": "localhost:5000",
-            "description": "Local Sever for development"
-        },
-        {
-            "url": "https://personal-organizer-api.herokuapp.com",
-            "description": "Production Ready, Live Application on Heroku"
-        }
-    ],
-    "paths": {
-        "/status": {
-            "get": {
-                "description": "Checks the server status, ok means that the Database and Server in general is ready to handle requests",
-                "responses": {
-                    "200": {
-                        "description": "Expected Server Response, means that the server is ready",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Database is not connected, request will fail",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth": {
-            "post": {
-                "description": "Creates a new User in the DB",
-                "requestBody": {
-                    "required": true,
-                    "description": "Data to create the new user",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "email": {
-                                        "type": "string"
-                                    },
-                                    "password": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "User created successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "accessToken": {
-                                            "type": "string"
-                                        },
-                                        "refreshToken": {
-                                            "type": "string"
-                                        },
-                                        "isAdmin": {
-                                            "type": "boolean"
-                                        },
-                                        "username": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request, either password or email doesn't match expected",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Server failed creating the new user",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "unique-auth": []
-                    }
-                ],
-                "description": "Deletes a user from the database, along with any related data",
-                "requestBody": {
-                    "required": true,
-                    "description": "UID and Password to ensure correct user is asking",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "uid": {
-                                        "type": "string"
-                                    },
-                                    "password": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "User deleted successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "User about to delete not found in the database",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/signin": {
-            "post": {
-                "description": "Sign a user in, generating an Access Token and Refresh Token",
-                "security": [
-                    {
-                        "unique-auth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "description": "Credentials to sign an user in",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "email": {
-                                        "type": "string"
-                                    },
-                                    "password": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "User created successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "accessToken": {
-                                            "type": "string"
-                                        },
-                                        "refreshToken": {
-                                            "type": "string"
-                                        },
-                                        "isAdmin": {
-                                            "type": "boolean"
-                                        },
-                                        "username": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Credentials doesn't match any user in record",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Credentials are invalid",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/signout": {
-            "post": {
-                "description": "Sign the user out, closing the session across *all** devices.",
-                "security": [
-                    {
-                        "unique-auth": []
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Successfully signed out",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "token used doens't have valid uid",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/update-credentials": {
-            "post": {
-                "description": "Update an users' credential, either email, password, or both",
-                "security": [
-                    {
-                        "unique-auth": []
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "description": "User credentials",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "password": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successfull Operation",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/refresh-access-token": {
-            "post": {
-                "description": "Refresh the *Access Token* of a user, returning a new pair of tokens, thus, the returned refresh token is the new refresh token that will be used to get a new Access Token the next time, invalidating the previous Refresh Token. If the Refresh Token is invalid, or expired, the user must Sign In again, to generate a new token pair.",
-                "requestBody": {
-                    "required": true,
-                    "description": "Credentials to sign an user in",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "email": {
-                                        "type": "string"
-                                    },
-                                    "password": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "New Token Pair generated successfully",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "accessToken": {
-                                            "type": "string"
-                                        },
-                                        "refreshToken": {
-                                            "type": "string"
-                                        },
-                                        "ok": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid Params passed",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Invalid Token, please reauthenticate to generate a new token pair",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "The refresh token has expired, please authenticate again",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Error"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    "description": "A simple and custom multipurpose API"
+  },
+  "servers": [
+    {
+      "url": "localhost:5000",
+      "description": "Local Sever for development"
     },
-    "components": {
-        "schemas": {
-            "User": {
+    {
+      "url": "https://starburst-api.herokuapp.com",
+      "description": "Production Ready, Live Application on Heroku"
+    }
+  ],
+  "paths": {
+    "/status": {
+      "get": {
+        "description": "Checks the server status, ok means that the Database and Server in general is ready to handle requests",
+        "responses": {
+          "200": {
+            "description": "Expected Server Response, means that the server is ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Database is not connected, request will fail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth": {
+      "post": {
+        "description": "Creates a new User in the DB",
+        "requestBody": {
+          "required": true,
+          "description": "Data to create the new user",
+          "content": {
+            "application/json": {
+              "schema": {
                 "type": "object",
-                "required": [
-                    "id",
-                    "name"
-                ],
                 "properties": {
-                    "id": {
-                        "type": "integer",
-                        "format": "int64"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "tag": {
-                        "type": "string"
-                    }
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
                 }
-            },
-            "Error": {
-                "type": "object",
-                "required": [
-                    "code",
-                    "message"
-                ],
-                "properties": {
-                    "code": {
-                        "type": "string"
-                    },
-                    "message": {
-                        "type": "string"
-                    }
-                }
+              }
             }
+          }
         },
-        "securitySchemes": {
-            "unique-auth": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "JWT"
+        "responses": {
+          "200": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "refreshToken": {
+                      "type": "string"
+                    },
+                    "isAdmin": {
+                      "type": "boolean"
+                    },
+                    "username": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
             }
+          },
+          "400": {
+            "description": "Bad request, either password or email doesn't match expected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server failed creating the new user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
-    },
-    "security": [
-        {
+      },
+      "delete": {
+        "security": [
+          {
             "unique-auth": []
+          }
+        ],
+        "description": "Deletes a user from the database, along with any related data",
+        "requestBody": {
+          "required": true,
+          "description": "UID and Password to ensure correct user is asking",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "uid": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "User about to delete not found in the database",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
-    ]
+      }
+    },
+    "/auth/signin": {
+      "post": {
+        "description": "Sign a user in, generating an Access Token and Refresh Token",
+        "security": [
+          {
+            "unique-auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Credentials to sign an user in",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "refreshToken": {
+                      "type": "string"
+                    },
+                    "isAdmin": {
+                      "type": "boolean"
+                    },
+                    "username": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Credentials doesn't match any user in record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credentials are invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/signout": {
+      "post": {
+        "description": "Sign the user out, closing the session across *all** devices.",
+        "security": [
+          {
+            "unique-auth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully signed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "token used doens't have valid uid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/update-credentials": {
+      "post": {
+        "description": "Update an users' credential, either email, password, or both",
+        "security": [
+          {
+            "unique-auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "User credentials",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfull Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh-access-token": {
+      "post": {
+        "description": "Refresh the *Access Token* of a user, returning a new pair of tokens, thus, the returned refresh token is the new refresh token that will be used to get a new Access Token the next time, invalidating the previous Refresh Token. If the Refresh Token is invalid, or expired, the user must Sign In again, to generate a new token pair.",
+        "requestBody": {
+          "required": true,
+          "description": "Credentials to sign an user in",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New Token Pair generated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accessToken": {
+                      "type": "string"
+                    },
+                    "refreshToken": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid Params passed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid Token, please reauthenticate to generate a new token pair",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The refresh token has expired, please authenticate again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["code", "message"],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "unique-auth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "unique-auth": []
+    }
+  ]
 }

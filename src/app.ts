@@ -19,7 +19,7 @@ app.use(express.json());
 
 const whiteList = [
   'http://localhost:3000',
-  'https://personal-organizer-app.herokuapp.com',
+  'https://starburst-app.herokuapp.com',
 ];
 const corsOptions: cors.CorsOptions = {
   origin: function (origin, callback) {

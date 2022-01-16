@@ -30,7 +30,7 @@ interface IDB {
   close: () => Promise<void>;
 }
 
-const uri = `mongodb+srv://${variables.DB_USER}:${variables.DB_PASSWORD}@cluster0.nt8vz.mongodb.net/personal-app?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${variables.DB_USER}:${variables.DB_PASSWORD}@starburst-cluster-0.2f56m.mongodb.net/starburst?retryWrites=true&w=majority`;
 
 /**
  * Unique DB connection object with methods and variables to easy access across the project.

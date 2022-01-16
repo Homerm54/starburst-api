@@ -1,6 +1,6 @@
-# Organizer API
+# Starburst API
 
-This API is part of the Organizer project, and thus, represents the Back End, RESTful API that the client software uses to interact with, mostly, the Database, make connections and delegate tasks.
+This API is part of the Starburst project, and thus, represents the Back End, RESTful API that the client software uses to interact with, mostly, the Database, make connections and delegate tasks.
 
 The API especification, along with the documentation resides in the `openapi.json` file, that follows the Open Api Specifications Version 3.0, and in the interactive HTLM page in the `docs/index.html`, which contains information about the endpoints, results, headers, authentication methods, and every other technical aspect.
 
@@ -29,7 +29,7 @@ Currently, the system only have one authentication method, email + password, new
 The API make use of **MongoDB** as the central database where all the persisten data is stored, the multiples services make use of the Database through models, that represents the single source of interaction with the Database code, hence, no Mongo related imports or manipulations are done outside of the `/database` folder.
 
 - Server Status
-To make it easy to the client to detect any connection problems beforehand, the `status` endpoint is available, which checks the database state, in case of any error that make it imposible to handle requests, the error status is send.
+  To make it easy to the client to detect any connection problems beforehand, the `status` endpoint is available, which checks the database state, in case of any error that make it imposible to handle requests, the error status is send.
 
 All the database related code is inside the `/database` folder, and the services imports the models in this folder to get, create, update, delete or delete documents, as well as access special functions, validators, and any other feature needed by the service.
 
