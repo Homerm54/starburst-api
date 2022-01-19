@@ -20,7 +20,7 @@ const authRouter = express.Router();
  * Endpoint to create a new user, check if the email passed is not already in use
  * to ensure uniqueness in the database.
  */
-authRouter.post('/create', checkEmailInUse, createUser);
+authRouter.post('/', checkEmailInUse, createUser);
 
 /**
  *
