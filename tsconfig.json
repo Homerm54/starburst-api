@@ -13,9 +13,9 @@
       "database": ["database/index"],
       "database/*": ["database/*"],
       "middleware/*": ["middleware/*"],
-      "routes/*" : ["routes/*"],
+      "routes/*": ["routes/*"],
       "auth/*": ["auth/*"],
-      "lib/*": ["lib/*"], 
+      "lib/*": ["lib/*"]
     }
   }
 }

@@ -18,7 +18,7 @@ app.use(httpLogger);
 app.use(express.json());
 
 const whiteList = [
-  'http://localhost:3000',
+  'http://localhost:3736',
   'https://starburst-app.herokuapp.com',
 ];
 const corsOptions: cors.CorsOptions = {

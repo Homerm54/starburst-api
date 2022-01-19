@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "set DEBUG=auth:controller,tokens && nodemon -r dotenv/config -r tsconfig-paths/register src/app.ts",
     "start": "node -r dotenv/config -r ./tsconfig-paths-bootstrap.js build/src/app.js",
-    "build": "tsc && copyfiles docs/index.html build",
+    "build": "tsc",
     "postinstall": "npm run build",
     "generate-docs": "redoc-cli bundle -o docs/index.html openapi.json",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
