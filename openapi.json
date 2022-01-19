@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "version": "0.1.0",
-    "title": "Starburst API",
+    "title": "Personal App",
     "license": {
       "name": "MIT"
     },
@@ -14,7 +14,7 @@
       "description": "Local Sever for development"
     },
     {
-      "url": "https://starburst-api.herokuapp.com",
+      "url": "https://personal-organizer-api.herokuapp.com",
       "description": "Production Ready, Live Application on Heroku"
     }
   ],
