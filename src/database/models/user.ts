@@ -21,6 +21,17 @@ export interface User extends ITimestamps, Document {
   /** Whether the user is admin or not */
   isAdmin: boolean;
 
+  /**
+   * The Refresh Token used by the File Storage system to generate new Access Tokens
+   * and allow interaction between this API, and teh File Storage API.
+   *
+   * Until the user connects his/her the File Storage API account with this API,
+   * this field will be null.
+   */
+  fileStorageRefreshToken: string | null;
+  /** ID of the user's account in the File Storage Service */
+  fileStorageServiceAccountId: string | null;
+
   // Methods
   /**
    * Check if a password passed belongs to the user.
@@ -56,6 +67,19 @@ const UserSchema = new Schema<User>(
     isAdmin: {
       type: Boolean,
       default: false,
+    },
+
+    // Service Related Fields
+    // File Storage
+    fileStorageRefreshToken: {
+      type: String,
+      require: false,
+      default: null,
+    },
+    fileStorageServiceAccountId: {
+      type: String,
+      require: false,
+      default: null,
     },
   },
   {

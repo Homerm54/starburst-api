@@ -82,7 +82,7 @@ export const checkEmailInUse = async (
  * Validates the JWT in the request, and allow next middleware in the chain, storing the
  * user id inside `req.body.uid`.
  */
-export const validateJWT = async (
+export const isAuth = async (
   req: Request,
   res: Response,
   next: NextFunction

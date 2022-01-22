@@ -14,8 +14,9 @@
       "database/*": ["database/*"],
       "middleware/*": ["middleware/*"],
       "routes/*": ["routes/*"],
+      "lib/*": ["lib/*"],
       "auth/*": ["auth/*"],
-      "lib/*": ["lib/*"]
+      "file-storage": ["file-storage/index"]
     }
   }
 }
