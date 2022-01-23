@@ -37,7 +37,11 @@
 
 import axiosRaw from 'axios';
 import { variables } from 'lib/config';
+import { ServerError } from 'middlewares/errors';
 import { FileType, FolderType } from './types';
+import debug from 'debug';
+
+const log = debug('file-system:index');
 
 // Constants and objects
 const APP_FOLDER_NAME = 'starburst-data';
@@ -47,6 +51,46 @@ const axios = axiosRaw.create({
     'Content-Type': 'application/json',
   },
 });
+
+axios.interceptors.response.use(
+  (value) => value,
+  function (error) {
+    const status = error.response.status;
+    const data = error.response.data;
+
+    switch (status) {
+      case 401: {
+        // Bad or expired access token
+        throw new ServerError(
+          401,
+          'token-error',
+          'token has expired or has been revoked by the user'
+        );
+      }
+
+      case 403: {
+        // Account access error, user isn't allowed
+        throw new ServerError(
+          403,
+          'access-denied',
+          'No token present in response'
+        );
+      }
+
+      case 429: {
+        // Too many request for this app, try again latter
+        throw new ServerError(
+          429,
+          'too-many-requests',
+          `Too many request from this API, try again in ${data.retry_after} seconds`
+        );
+      }
+
+      default:
+        throw error;
+    }
+  }
+);
 
 class FileServiceError extends Error {
   code: string;
@@ -83,7 +127,7 @@ const getFolderAnalitics = async (
   let res;
 
   if (data.cursor) {
-    console.log(
+    log(
       `Getting more that from the folder ${data.path}, with cursor: ${data.cursor}`
     );
     // If cursor passed, get the files and folders that couldn't be
@@ -99,7 +143,7 @@ const getFolderAnalitics = async (
     );
   } else {
     // If no cursor, then get the files and folders from the passed path
-    console.log(`Getting data from the folder: ${data.path}`);
+    log(`Getting data from the folder: ${data.path}`);
     res = await axios.post(
       '/files/list_folder',
       { path: data.path },
@@ -139,7 +183,7 @@ const getFolderAnalitics = async (
     totalSize += accumulativeSize;
   }
 
-  console.log('Total Subfolders:', ...subFolders);
+  log('Total Subfolders:', ...subFolders);
 
   // After finishing with the cursor, call this function again for all the subfolders
   // found, until all of them are retrieved and done
@@ -159,7 +203,7 @@ const getFolderAnalitics = async (
     );
   }
 
-  console.log('Total: ', totalSize, files);
+  log('Total: ', totalSize, files);
   return [totalSize, files];
 };
 
@@ -212,7 +256,12 @@ const getSpaceAnalitics = async (accessToken: string) => {
       },
     };
   } catch (error) {
+    if (error instanceof ServerError) {
+      throw error;
+    }
+
     console.error(error);
+    throw new FileServiceError('unknow', 'New error, check logs for details');
   }
 };
 
@@ -242,7 +291,7 @@ const finishAuthFlow = async (code: string) => {
     });
 
     if (!res.data.access_token || !res.data.refresh_token) {
-      throw new FileServiceError('api-error', 'No token present in response');
+      throw new ServerError(500, 'api-error', 'No token present in response');
     }
 
     return {
@@ -250,13 +299,28 @@ const finishAuthFlow = async (code: string) => {
       refresh_token: res.data.refresh_token as string,
       serviceAccountId: (res.data.account_id as string) || null,
     };
-  } catch (error) {
+  } catch (error: any) {
     if (axiosRaw.isAxiosError(error)) {
-      // TODO: Catch errors here, like bad code
-      throw new FileServiceError('unkwon');
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx
+        const status = error.response.status;
+        const data = error.response.data;
+
+        if (data.error === 'invalid_grant') {
+          throw new ServerError(
+            400,
+            'invalid-code',
+            "Code expired or doesn't Exist"
+          );
+        }
+
+        console.error(status, data);
+      }
     }
 
-    throw error;
+    // Something happened in setting up the request that triggered an Error
+    console.error(error);
+    throw new ServerError(500, 'unknow');
   }
 };
 
@@ -289,17 +353,38 @@ const getNewAccessToken = async (refresh_token: string) => {
     });
 
     if (!res.data.access_token) {
-      throw new FileServiceError('api-error', 'No token present in response');
+      throw new ServerError(
+        500,
+        'service-error',
+        'No token present in response'
+      );
     }
 
     return res.data.access_token as string;
   } catch (error) {
+    if (error instanceof ServerError) {
+      throw error;
+    }
+
     if (axiosRaw.isAxiosError(error)) {
-      // TODO: Catch errors here, like bad code
+      if (error.response) {
+        const data = error.response.data;
+        const status = error.response.status;
+
+        if (status === 400) {
+          throw new ServerError(
+            400,
+            'invalid-token',
+            'Refresh token is invalid or expired, either way, reauthenticate to get a new one.'
+          );
+        }
+        console.error(status, data);
+      }
+      console.error(error);
       throw new FileServiceError('unkwon');
     }
 
-    console.log(error);
+    console.error(error);
     throw error;
   }
 };
@@ -312,7 +397,7 @@ const account = {
   finishAuthFlow,
 };
 
-export { APP_FOLDER_NAME, account };
+export { FileServiceError, APP_FOLDER_NAME, account };
 
 /**
  * This is with no redirect_uri

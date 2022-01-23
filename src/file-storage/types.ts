@@ -1,4 +1,4 @@
-type BasicFolderType = {
+type BasicEntityType = {
   name: string;
   id: string;
 
@@ -26,7 +26,7 @@ type BasicFolderType = {
   ];
 };
 
-export type FileType = BasicFolderType & {
+export type FileType = BasicEntityType & {
   '.tag': 'folder';
   client_modified: string;
   server_modified: string;
@@ -36,7 +36,7 @@ export type FileType = BasicFolderType & {
   size: boolean;
 };
 
-export type FolderType = BasicFolderType & {
+export type FolderType = BasicEntityType & {
   '.tag': 'file';
   client_modified: string;
   server_modified: string;

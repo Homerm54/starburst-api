@@ -1,6 +1,6 @@
 import { UserModel } from 'database/models/user';
 import { NextFunction, Request, Response } from 'express';
-import { account } from 'file-storage';
+import { account, FileServiceError } from 'file-storage';
 import { ServerError } from 'middlewares/errors';
 
 /**
@@ -10,10 +10,18 @@ import { ServerError } from 'middlewares/errors';
  * - Space used by application
  * - Files inside application folder
  */
-const getUserMetadata = async (req: Request, res: Response) => {
-  const data = await account.getSpaceAnalitics(req.body.file_service_token);
-  console.log(data);
-  res.json(data);
+const getUserMetadata = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const data = await account.getSpaceAnalitics(req.body.file_service_token);
+    res.status(200).json(data);
+  } catch (error) {
+    console.log(error instanceof ServerError);
+    next(error);
+  }
 };
 
 /**
@@ -35,11 +43,16 @@ const finishAuthFlow = async (
       new ServerError(400, 'missing-param', 'Missing code param in request')
     );
   } else {
-    const data = await account.finishAuthFlow(req.body.code);
-    user.fileStorageServiceAccountId = data.serviceAccountId;
-    user.fileStorageRefreshToken = data.refresh_token;
+    try {
+      const data = await account.finishAuthFlow(req.body.code);
+      user.fileStorageServiceAccountId = data.serviceAccountId;
+      user.fileStorageRefreshToken = data.refresh_token;
 
-    res.status(200).json({ access_token: data.access_token });
+      res.status(200).json({ access_token: data.access_token });
+    } catch (error) {
+      next(error);
+    }
+
     await user.save();
   }
 };
@@ -67,8 +80,14 @@ const generateRefreshToken = async (
       )
     );
   } else {
-    const token = await account.getNewAccessToken(user.fileStorageRefreshToken);
-    res.status(200).json({ access_token: token });
+    try {
+      const token = await account.getNewAccessToken(
+        user.fileStorageRefreshToken
+      );
+      res.status(200).json({ access_token: token });
+    } catch (error) {
+      next(error);
+    }
   }
 };
 
