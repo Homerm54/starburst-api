@@ -1,55 +1,19 @@
 /**
  * @module Authentication
- * @file Middlewares and Endpoints related to the authentication and authorization service inside the API.
  * @author Omer Marquez <omer.marquezt@gmail.com>
+ * @file Middlewares and Endpoints related to the authentication and authorization service inside
+ * the API.
+ * This file, along with the middlewares and endpoints are the only source of code from where all the
+ * authentication service dwells. Hence, here is defined how the Auth Service work, caveats and general rules.
  *
- * This file, along with the middlewares and endpoints are the single source of coode from where all the
- * authentication service live. Hence, here is defined how the Auth Service work, caveats and general rules.
- *
- * ## Tokens
- *
- * The auth service is token drived, which means that request to secured routes are checked with the
- * **authorization** token in the header of the request. Two types of tokens are used, **Access Token**
- * and **Refresh Tokens**.
- *
- * ### Access Tokens
- * This tokens are short live (less that an hour), and are the one that carries the information needed to
- * see who is requesting, access level, and other details needed to process the request. Anyone who holds
- * this token can interact with the API and it's routes, hence, it's important to keep then safetly store.
- *
- * Because of the power of this tokens they are short lived, if an evil user intercepts the token, there's
- * only a short frame for what the user can do.
- *
- * ### Refresh Tokens
- * Once an Access Token expires, a new one must be generated to keep interacting with the API. To avoid having
- * to reauthenticate every 15 minutes or so, a Refresh token is also issued along with the Access Token when
- * authenticated, using this token, a new Access Token can be generated without the need to send credentials
- * again to the server.
- *
- * The refresh token has a lifespam of up to 1 month, this way, a user can be singed client side up to 1 month,
- * without requiring to sign in again (authenticate again).
- *
- * ### Rotatory Refresh Token System
- * Because of the power of generating infinite access tokens, a **Rotatory Refresh Token System** is implemented,
- * this way, the absolute lifespam of the token pair is reduced, an in case an evil user intercepts any of the
- * tokens, the system can identify when a refresh token is reused, and log the user out of the system for security.
- *
- * This method lets the user by forever authenticated, as long as no token re-use is detected by the auth system or
- * no refesh token is expired due to **max inactive time**.
- *
- * The system will work storing the tokens in the database, keeping a "token history" for every user. How many
- * tokens are stored determines for how long the system is able to detect a reutilization of tokens.
- *
- * ## Sign Out
- * The sign out process just invalidates any active token, needing to sign in again on every device.
- *
- * @see folder: designs/auth for diagrams on the process
+ * @see README.md For more information on how this workds
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { UserModel } from 'database/models/user';
 import debug from 'debug';
-import { verifyAccessToken, generateAccessToken, TokenError } from 'auth/token';
+import { verifyAccessToken, generateAccessToken } from 'auth/token';
+import { TokenError } from 'auth/error';
 import { variables } from 'lib/config';
 import { ServerError } from 'middlewares/errors';
 import { RefreshToken } from 'database/models/tokens';
@@ -104,15 +68,21 @@ export const isAuth = async (
 
   try {
     const uid = await verifyAccessToken(token);
-    if (uid) {
-      req.body.uid = uid;
-      next();
-    }
+    req.body.uid = uid;
+    next();
   } catch (error) {
-    let code = 'unknow';
-    if (error instanceof TokenError) code = error.code;
-
-    next(new ServerError(401, code, 'Unauthorized Request'));
+    if (error instanceof TokenError) {
+      if (error.code === 'expired-token') {
+        next(
+          new ServerError(401, 'invalid-access-token', 'Unauthorized Request')
+        );
+      } else {
+        next(new ServerError(401, error.code, 'Unauthorized Request'));
+      }
+    } else {
+      console.error(error);
+      next(new ServerError(401, 'unknown-error', 'Unauthorized Request'));
+    }
   }
 };
 
@@ -126,11 +96,7 @@ export const validateAdmin = async (
 ) => {
   const { uid } = req.body;
 
-  if (!uid) {
-    next(new ServerError(400, 'missing-uid', 'Missing UID'));
-    return;
-  }
-  const user = await UserModel.findOne();
+  const user = await UserModel.findOne({ _id: uid });
 
   if (!user) {
     next(new ServerError(404, 'user-not-found', 'User not found'));
@@ -184,7 +150,13 @@ export const createUser = async (
     });
   } catch (error) {
     console.error(error);
-    next(new ServerError(500, 'unknown-error'));
+    next(
+      new ServerError(
+        500,
+        'unknown-error',
+        'An unexpected error ocurred, check logs for details'
+      )
+    );
   }
 };
 
@@ -226,7 +198,13 @@ export const deleteUser = async (
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error(error);
-    next(new ServerError(500, 'unknow-error'));
+    next(
+      new ServerError(
+        500,
+        'unknown-error',
+        'An unexpected error ocurred, check logs for details'
+      )
+    );
   }
 };
 
@@ -256,7 +234,7 @@ export const signIn = async (
 
   const match = await user.isValidPassword(password);
   if (!match) {
-    next(new ServerError(401, 'auth-failed', 'Unable to authenticate'));
+    next(new ServerError(401, 'unauthorized', 'Unable to authenticate'));
     return;
   }
 
@@ -337,7 +315,7 @@ export const refreshAccessToken = async (
         next(
           new ServerError(
             401,
-            'unauthorized',
+            'invalid-refresh-token',
             'Invalid Token, please reauthenticate to generate a new token pair'
           )
         );

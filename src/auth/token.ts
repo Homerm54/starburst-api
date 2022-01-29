@@ -2,33 +2,22 @@ import jwt from 'jsonwebtoken';
 import debug from 'debug';
 import { variables } from 'lib/config';
 import { tokenConfig } from './config';
+import { TokenError } from './error';
 
 const log = debug('tokens');
-
 const { TokenExpiredError, JsonWebTokenError } = jwt;
 
-enum ErrorCodes {
-  bad = 'bad-token',
-  expired = 'expired-token',
-  unknown = 'unknown',
-}
-
-export class TokenError extends Error {
-  code: ErrorCodes;
-
-  constructor(codeArg: ErrorCodes) {
-    super(codeArg);
-
-    this.code = codeArg;
-  }
-}
+type Token = {
+  // The ID of the user in the Database, UserID, UID
+  uid: string;
+};
 
 /**
  * Generetes an Access Token, that expires in 15 minutes.
  * @param {string} uid The uid of the user in the database, used as token payload.
  * @returns {string} The token, signed and ready to be send to the client.
  */
-export const generateAccessToken = (uid: string): Promise<string> => {
+export const generateAccessToken = (uid: string): Promise<Token> => {
   log('Generating access token...');
 
   return new Promise((resolve, reject) => {
@@ -57,7 +46,7 @@ export const generateAccessToken = (uid: string): Promise<string> => {
  * @param token The Access Tken signed by {@link generateAccessToken}
  * @returns {Promise<string>} The UID of the user in the database
  */
-export const verifyAccessToken = (token: string) => {
+export const verifyAccessToken = (token: string): Promise<Token> => {
   log('Verifying  JWT: %s', token);
 
   return new Promise((resolve, reject) => {
@@ -65,13 +54,13 @@ export const verifyAccessToken = (token: string) => {
       if (err || !payload) {
         if (err instanceof TokenExpiredError) {
           log('Expired Token error %o', err);
-          reject(new TokenError(ErrorCodes.expired));
-        } else if (err instanceof JsonWebTokenError) {
+          reject(new TokenError('expired-token'));
+        } else if (err instanceof JsonWebTokenError || !payload) {
           log('Token error %o', err);
-          reject(new TokenError(ErrorCodes.bad));
+          reject(new TokenError('bad-token'));
         } else {
           log('Unkwon error');
-          reject(new TokenError(ErrorCodes.unknown));
+          reject(new TokenError('unknown-token-error'));
         }
       } else {
         log('Payload: %o', payload);

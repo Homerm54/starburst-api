@@ -1,32 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
-
-/**
- * Errors thrown in the middlewares, used to keep an error structure with all needs
- * to allow the error handler middleware take an action.
- */
-class ServerError extends Error {
-  statusCode: number;
-  message: string;
-  code: string;
-
-  constructor(statusCode: number, code: string, message?: string) {
-    super();
-    this.code = code;
-    this.statusCode = statusCode;
-    this.message = message || 'No message';
-  }
-}
+import { Request, Response } from 'express';
+import { ServerError } from 'lib/error';
 
 /**
  * Catch any error either thrown or passed to the next function across the routes.
  * If the error is not an instance of {@link ServerError}, a 500 response is send.
  */
-const errorHandler = (
-  err: any,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const errorHandler = (err: any, req: Request, res: Response) => {
   if (err instanceof ServerError) {
     res.status(err.statusCode).json({
       error: true,
@@ -34,6 +13,8 @@ const errorHandler = (
       message: err.message,
     });
   } else {
+    console.log(err);
+
     res.status(500).json({
       error: true,
       code: 'unknow',
