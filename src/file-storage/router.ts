@@ -1,11 +1,18 @@
 import {
+  deleteFile,
+  downloadFile,
   finishAuthFlow,
   generateRefreshToken,
   getUserMetadata,
+  uploadFile,
 } from 'file-storage/controller';
 import express, { NextFunction, Request, Response } from 'express';
 import { ServerError } from 'middlewares/errors';
 import { isAuth } from 'auth/controller';
+import multer from 'multer';
+import { variables } from 'lib/config';
+const storage = multer.memoryStorage();
+const fileMiddleware = multer({ storage }).single('File');
 
 /** Checks that the required tokens are present */
 const isFileServiceAuth = (req: Request, res: Response, next: NextFunction) => {
@@ -41,6 +48,20 @@ router.post('/finish-auth-flow', isAuth, finishAuthFlow);
 // Account section
 router.get('/account-data', isAuth, isFileServiceAuth, getUserMetadata);
 
-// Files CRUD Section
+// Files CRUD Section for testing only
+if (variables.devMode) {
+  router.get('/:path(*)', isFileServiceAuth, downloadFile);
+  router.delete('/:path(*)', isFileServiceAuth, deleteFile);
+  router.post(
+    '/upload',
+    isFileServiceAuth,
+    (req, res, next) => {
+      req.params.accessToken = req.body.file_service_token;
+      next();
+    },
+    fileMiddleware,
+    uploadFile
+  );
+}
 
 export { router as fileServiceRouter, isFileServiceAuth };

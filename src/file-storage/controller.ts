@@ -1,6 +1,6 @@
 import { UserModel } from 'database/models/user';
 import { NextFunction, Request, Response } from 'express';
-import { account, FileServiceError } from 'file-storage';
+import { account, files } from 'file-storage';
 import { ServerError } from 'middlewares/errors';
 
 /**
@@ -81,6 +81,7 @@ const generateRefreshToken = async (
     );
   } else {
     try {
+      console.log(user.fileStorageRefreshToken);
       const token = await account.getNewAccessToken(
         user.fileStorageRefreshToken
       );
@@ -91,4 +92,50 @@ const generateRefreshToken = async (
   }
 };
 
-export { getUserMetadata, generateRefreshToken, finishAuthFlow };
+const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
+  const { file } = req;
+  if (!file) {
+    next(new ServerError(400, 'no-file', 'There is no file in the request'));
+  } else {
+    await files.upload(
+      req.params.accessToken,
+      file.buffer,
+      '/a/hola.txt',
+      true
+    );
+    res.send(true);
+  }
+};
+
+const downloadFile = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  console.log(req.params.path);
+
+  const file = await files.get.file(
+    req.body.file_service_token,
+    `/${req.params.path}`
+  );
+  res.send(file);
+};
+
+const deleteFile = async (req: Request, res: Response, next: NextFunction) => {
+  console.log(req.params.path);
+
+  const file = await files.delete(
+    req.body.file_service_token,
+    `/${req.params.path}`
+  );
+  res.send(file);
+};
+
+export {
+  getUserMetadata,
+  generateRefreshToken,
+  finishAuthFlow,
+  uploadFile,
+  downloadFile,
+  deleteFile,
+};

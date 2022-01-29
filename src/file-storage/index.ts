@@ -45,51 +45,60 @@ const log = debug('file-system:index');
 
 // Constants and objects
 const APP_FOLDER_NAME = 'starburst-data';
-const axios = axiosRaw.create({
+const dropboxAPI = axiosRaw.create({
   baseURL: 'https://api.dropboxapi.com/2',
   headers: {
     'Content-Type': 'application/json',
   },
 });
+const dropboxFileAPI = axiosRaw.create({
+  baseURL: 'https://content.dropboxapi.com/2/files',
+  headers: {
+    'Content-Type': 'application/octet-stream',
+  },
+});
 
-axios.interceptors.response.use(
-  (value) => value,
-  function (error) {
-    const status = error.response.status;
-    const data = error.response.data;
+function basicErrorInterceptor(error: any) {
+  const status = error.response.status;
+  const data = error.response.data;
 
-    switch (status) {
-      case 401: {
-        // Bad or expired access token
-        throw new ServerError(
-          401,
-          'token-error',
-          'token has expired or has been revoked by the user'
-        );
-      }
-
-      case 403: {
-        // Account access error, user isn't allowed
-        throw new ServerError(
-          403,
-          'access-denied',
-          'No token present in response'
-        );
-      }
-
-      case 429: {
-        // Too many request for this app, try again latter
-        throw new ServerError(
-          429,
-          'too-many-requests',
-          `Too many request from this API, try again in ${data.retry_after} seconds`
-        );
-      }
-
-      default:
-        throw error;
+  switch (status) {
+    case 401: {
+      // Bad or expired access token
+      throw new ServerError(
+        401,
+        'token-error',
+        'token has expired or has been revoked by the user'
+      );
     }
+
+    case 403: {
+      // Account access error, user isn't allowed
+      throw new ServerError(
+        403,
+        'access-denied',
+        'No token present in response'
+      );
+    }
+
+    case 429: {
+      // Too many request for this app, try again latter
+      throw new ServerError(
+        429,
+        'too-many-requests',
+        `Too many request from this API, try again in ${data.retry_after} seconds`
+      );
+    }
+
+    default:
+      throw error;
   }
+}
+
+dropboxAPI.interceptors.response.use((value) => value, basicErrorInterceptor);
+dropboxFileAPI.interceptors.response.use(
+  (value) => value,
+  basicErrorInterceptor
 );
 
 class FileServiceError extends Error {
@@ -132,7 +141,7 @@ const getFolderAnalitics = async (
     );
     // If cursor passed, get the files and folders that couldn't be
     // fetched on the last call to the endpoint
-    res = await axios.post(
+    res = await dropboxAPI.post(
       '/files/list_folder/continue',
       { cursor: data.cursor, path: data.path },
       {
@@ -144,7 +153,7 @@ const getFolderAnalitics = async (
   } else {
     // If no cursor, then get the files and folders from the passed path
     log(`Getting data from the folder: ${data.path}`);
-    res = await axios.post(
+    res = await dropboxAPI.post(
       '/files/list_folder',
       { path: data.path },
       {
@@ -213,7 +222,7 @@ const getFolderAnalitics = async (
  */
 const getSpaceAnalitics = async (accessToken: string) => {
   try {
-    const res = await axios.post('/users/get_space_usage', null, {
+    const res = await dropboxAPI.post('/users/get_space_usage', null, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -277,7 +286,7 @@ const finishAuthFlow = async (code: string) => {
   data.append('grant_type', 'authorization_code');
 
   try {
-    const res = await axios({
+    const res = await dropboxAPI({
       url: 'https://api.dropboxapi.com/oauth2/token',
       method: 'POST',
       headers: {
@@ -338,7 +347,7 @@ const getNewAccessToken = async (refresh_token: string) => {
   data.append('grant_type', 'refresh_token');
 
   try {
-    const res = await axios({
+    const res = await dropboxAPI({
       url: 'https://api.dropboxapi.com/oauth2/token',
       method: 'POST',
       headers: {
@@ -390,14 +399,158 @@ const getNewAccessToken = async (refresh_token: string) => {
 };
 
 // Files Operations
+/**
+ * There's also a file search thing, by tags or name, make sure to check it out
+ */
+// files/upload
+const uploadFile = async (
+  accessToken: string,
+  file: Buffer,
+  path: string,
+  overwrite = false
+) => {
+  const options = {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Dropbox-API-Arg': JSON.stringify({
+        path,
+        mute: true,
+        mode: {
+          '.tag': overwrite ? 'overwrite' : 'add',
+        },
+        autorename: true,
+        strict_conflict: false,
+      }),
+    },
+  };
 
+  try {
+    const res = await dropboxFileAPI.post('/upload', file, options);
+    console.log(res.status, res.data);
+  } catch (error) {
+    if (axiosRaw.isAxiosError(error)) {
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx
+        const status = error.response.status;
+        const data = error.response.data;
+        console.error(status, data);
+      }
+    }
+
+    // Something happened in setting up the request that triggered an Error
+    console.error(error);
+    throw new ServerError(500, 'unknow');
+  }
+};
+
+/**
+ * Currently, there are 3 methods to access files in dropbox:
+ * - Download the file directly
+ * - Get a preview of the file
+ * - Get a thumbnail
+ *
+ * Depending on the user needs, the files can be  sent to the client, the client
+ * edits them, and then back to the API to save.
+ * @see https://www.dropboxforum.com/t5/Dropbox-API-Support-Feedback/API-command-to-view-file-content-in-web-browser/td-p/283316
+ *
+ * Other interesting options are also:
+ * - List Folder, to get the metadata of the folders, useful to show a preview of what's in the folder
+ * - File Metadata
+ * - Copy files
+ * - Delete Batch
+ * TODO: Check dropbox paper
+ */
+const getFile = async (accessToken: string, path: string) => {
+  try {
+    const res = await dropboxFileAPI.post('/download', null, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Dropbox-API-Arg': JSON.stringify({ path }),
+      },
+    });
+
+    console.log(res.status, res.headers);
+    return res.data;
+  } catch (error) {
+    if (error instanceof ServerError) {
+      throw error;
+    }
+
+    if (axiosRaw.isAxiosError(error)) {
+      if (error.response) {
+        const data = error.response.data;
+        const status = error.response.status;
+
+        console.error(status, data);
+      }
+      console.error(error);
+      throw new FileServiceError('unkwon');
+    }
+
+    console.error(error);
+    throw error;
+  }
+};
+const getFilePreview = () => {};
+const getFileThumbnail = () => {};
+// files/uplad too, modify the mode param
+const updateFile = () => {
+  // check rev, from revision
+  // this will determine the conflic
+  // or use the overwrite force overwrite
+};
+// files/delete
+const deleteFile = async (accessToken: string, path: string) => {
+  try {
+    const res = await dropboxAPI.post(
+      '/files/delete_v2',
+      { path },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+    console.log(res.status, res.data);
+
+    if (res.data.error) {
+      const error = res.data.error['.tag'];
+      // TODO: Throw error here!
+    }
+  } catch (error) {
+    if (axiosRaw.isAxiosError(error)) {
+      if (error.response) {
+        // The request was made and the server responded with a status code outside of 2xx
+        const status = error.response.status;
+        const data = error.response.data;
+        console.error(status, data);
+      }
+    }
+
+    // Something happened in setting up the request that triggered an Error
+    console.error(error);
+    throw new ServerError(500, 'unknow');
+  }
+};
+
+// Export
 const account = {
   getSpaceAnalitics,
   getNewAccessToken,
   finishAuthFlow,
 };
 
-export { FileServiceError, APP_FOLDER_NAME, account };
+const files = {
+  upload: uploadFile,
+  get: {
+    file: getFile,
+    thumbnail: getFileThumbnail,
+    preview: getFilePreview,
+  },
+  update: updateFile,
+  delete: deleteFile,
+};
+export { FileServiceError, APP_FOLDER_NAME, account, files };
 
 /**
  * This is with no redirect_uri
@@ -420,5 +573,21 @@ export { FileServiceError, APP_FOLDER_NAME, account };
     "access_token": "sl.BAiMQHJt495E1hgjr1ggOh9uyRRnnQQlysgJ3WLtWGSiG23iMcs3tLKUkD-twBU6hUP8TjlXgEy6iu3Tlt8Pbpk9F9TJP8O1mTD3LcdYto8NdhlrWbkTj3uV9tJwRNZGRJww010",
     "token_type": "bearer",
     "expires_in": 14400
+}
+
+ {
+  metadata: {
+    '.tag': 'file',
+    name: '1.png',
+    path_lower: '/a/1.png',
+    path_display: '/a/1.png',
+    id: 'id:St3LmJRPlZUAAAAAAAABbQ',
+    client_modified: '2021-09-05T21:44:01Z',
+    server_modified: '2022-01-27T01:53:32Z',
+    rev: '5d68695eec9628c9436a1',
+    size: 49141,
+    is_downloadable: true,
+    content_hash: 'e5a1cd68b52e4ec0c4920e3194c88ae7bc228512ede0d40d71982883cdc0427b'
+  }
 }
  */
