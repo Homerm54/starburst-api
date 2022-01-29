@@ -1,45 +1,13 @@
-import { ITimestamps, timestampPlugIn } from 'database/plugins/timestamps';
-import { Schema, model, Document } from 'mongoose';
+import { timestampPlugIn } from 'database/plugins/timestamps';
+import { Schema, model } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
+import { User } from 'database/types';
 
 const saltRounds = 12;
 
 /** The name of the collection in the MongoDB Database, and where user docs will be saved */
 const collectionName = 'users';
-
-export interface User extends ITimestamps, Document {
-  /** Virtual prop representing the user's username, derived from email */
-  username: string;
-
-  /** Email of the user registered */
-  email: string;
-
-  /** Password of the user, encrypted and with custom getter to return undefined */
-  password: string;
-
-  /** Whether the user is admin or not */
-  isAdmin: boolean;
-
-  /**
-   * The Refresh Token used by the File Storage system to generate new Access Tokens
-   * and allow interaction between this API, and teh File Storage API.
-   *
-   * Until the user connects his/her the File Storage API account with this API,
-   * this field will be null.
-   */
-  fileStorageRefreshToken: string | null;
-  /** ID of the user's account in the File Storage Service */
-  fileStorageServiceAccountId: string | null;
-
-  // Methods
-  /**
-   * Check if a password passed belongs to the user.
-   * @param password the password about to compare
-   * @returns {Boolean} Whether the password is correct or not
-   */
-  isValidPassword: (password: string) => Promise<boolean>;
-}
 
 const UserSchema = new Schema<User>(
   {
@@ -98,9 +66,9 @@ UserSchema.plugin(timestampPlugIn);
 
 /** Encrypt the user password before saving it */
 UserSchema.pre('save', async function (next) {
-  const user = this;
+  // TODO: Check this, the password is reencrypted every time is updated
   const hash = await bcrypt.hash(
-    user.get('password', null, { getters: false }),
+    this.get('password', null, { getters: false }),
     saltRounds
   );
 
@@ -110,10 +78,9 @@ UserSchema.pre('save', async function (next) {
 
 // Schema Methods
 UserSchema.methods.isValidPassword = async function (password) {
-  const user = this;
   const compare = await bcrypt.compare(
     password,
-    user.get('password', null, { getters: false })
+    this.get('password', null, { getters: false })
   );
 
   return compare;

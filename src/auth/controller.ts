@@ -17,6 +17,7 @@ import { ErrorCodes, TokenError } from 'auth/error';
 import { variables } from 'lib/config';
 import { ServerError } from 'middlewares/errors';
 import { RefreshToken } from 'database/models/tokens';
+import { DatabaseErrorCodes } from 'database/error';
 
 const { devMode } = variables;
 
@@ -102,17 +103,15 @@ export const validateAdmin = async (
 ) => {
   const { uid } = req.body;
 
-  const user = await UserModel.findOne({ _id: uid });
-
-  if (!user) {
+  try {
+    const user = await UserModel.findOne({ _id: uid }).orFail();
+    if (user.isAdmin) {
+      next();
+    } else {
+      next(new ServerError(403, ErrorCodes.FORBIDDEN, 'forbidden'));
+    }
+  } catch (error) {
     next(new ServerError(404, ErrorCodes.USER_NOT_FOUND, 'User not found'));
-    return;
-  }
-
-  if (user.isAdmin) {
-    next();
-  } else {
-    next(new ServerError(403, ErrorCodes.FORBIDDEN, 'forbidden'));
   }
 };
 
@@ -186,7 +185,9 @@ export const deleteUser = async (
 
   const user = await UserModel.findOne({ _id: uid });
   if (!user) {
-    next(new ServerError(400, 'user-not-found', 'User not found'));
+    next(
+      new ServerError(400, DatabaseErrorCodes.USER_NOT_FOUND, 'User not found')
+    );
     return;
   }
 
@@ -235,34 +236,35 @@ export const signIn = async (
   next: NextFunction
 ) => {
   const { email, password } = req.body;
-  const user = await UserModel.findOne({ email });
+  try {
+    const user = await UserModel.findOne({ email }).orFail();
 
-  if (!user) {
-    next(new ServerError(400, 'user-not-found', 'User not found'));
-    return;
-  }
+    const match = await user.isValidPassword(password);
+    if (!match) {
+      next(
+        new ServerError(
+          401,
+          ErrorCodes.INVALID_CREDENTIALS,
+          'Unable to authenticate'
+        )
+      );
+      return;
+    }
 
-  const match = await user.isValidPassword(password);
-  if (!match) {
+    const accessToken = await generateAccessToken(user.id);
+    const refreshToken = await RefreshToken.createToken(user);
+    return res.json({
+      ok: true,
+      accessToken,
+      refreshToken,
+      username: user.username,
+      isAdmin: user.isAdmin,
+    });
+  } catch (error) {
     next(
-      new ServerError(
-        401,
-        ErrorCodes.INVALID_CREDENTIALS,
-        'Unable to authenticate'
-      )
+      new ServerError(400, DatabaseErrorCodes.USER_NOT_FOUND, 'User not found')
     );
-    return;
   }
-
-  const accessToken = await generateAccessToken(user.id);
-  const refreshToken = await RefreshToken.createToken(user);
-  return res.json({
-    ok: true,
-    accessToken,
-    refreshToken,
-    username: user.username,
-    isAdmin: user.isAdmin,
-  });
 };
 
 /**
