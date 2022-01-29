@@ -13,7 +13,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UserModel } from 'database/models/user';
 import debug from 'debug';
 import { verifyAccessToken, generateAccessToken } from 'auth/token';
-import { TokenError } from 'auth/error';
+import { ErrorCodes, TokenError } from 'auth/error';
 import { variables } from 'lib/config';
 import { ServerError } from 'middlewares/errors';
 import { RefreshToken } from 'database/models/tokens';
@@ -59,7 +59,7 @@ export const isAuth = async (
     next(
       new ServerError(
         403,
-        'unauthorized',
+        ErrorCodes.UNAUTHORIZED,
         devMode ? 'Missing Authentication token' : 'Unauthorized Request'
       )
     );
@@ -74,10 +74,16 @@ export const isAuth = async (
     if (error instanceof TokenError) {
       if (error.code === 'expired-token') {
         next(
-          new ServerError(401, 'invalid-access-token', 'Unauthorized Request')
+          new ServerError(401, ErrorCodes.EXPIRED_TOKEN, 'Unauthorized Request')
         );
       } else {
-        next(new ServerError(401, error.code, 'Unauthorized Request'));
+        next(
+          new ServerError(
+            401,
+            ErrorCodes.INVALID_REFRESH_TOKEN,
+            'Unauthorized Request'
+          )
+        );
       }
     } else {
       console.error(error);
@@ -99,14 +105,14 @@ export const validateAdmin = async (
   const user = await UserModel.findOne({ _id: uid });
 
   if (!user) {
-    next(new ServerError(404, 'user-not-found', 'User not found'));
+    next(new ServerError(404, ErrorCodes.USER_NOT_FOUND, 'User not found'));
     return;
   }
 
   if (user.isAdmin) {
     next();
   } else {
-    next(new ServerError(403, 'forbidden', 'forbidden'));
+    next(new ServerError(403, ErrorCodes.FORBIDDEN, 'forbidden'));
   }
 };
 
@@ -128,9 +134,13 @@ export const createUser = async (
   );
 
   if (password.length < 6 || password.length > 12) {
-    const code = 'invalid-password';
-    const message = 'Invalid Password, length type is incorrect';
-    next(new ServerError(400, code, message));
+    next(
+      new ServerError(
+        400,
+        'invalid-params',
+        'Invalid Password, length type is incorrect'
+      )
+    );
     return;
   }
 
@@ -185,7 +195,7 @@ export const deleteUser = async (
     next(
       new ServerError(
         401,
-        'unauthorized',
+        ErrorCodes.INVALID_CREDENTIALS,
         devMode ? 'Invalid Password' : 'Unauthorized Request'
       )
     );
@@ -234,7 +244,13 @@ export const signIn = async (
 
   const match = await user.isValidPassword(password);
   if (!match) {
-    next(new ServerError(401, 'unauthorized', 'Unable to authenticate'));
+    next(
+      new ServerError(
+        401,
+        ErrorCodes.INVALID_CREDENTIALS,
+        'Unable to authenticate'
+      )
+    );
     return;
   }
 
@@ -300,7 +316,7 @@ export const refreshAccessToken = async (
       next(
         new ServerError(
           401,
-          'unauthorized',
+          ErrorCodes.INVALID_REFRESH_TOKEN,
           'Invalid Token, please reauthenticate to generate a new token pair'
         )
       );
@@ -315,7 +331,7 @@ export const refreshAccessToken = async (
         next(
           new ServerError(
             401,
-            'invalid-refresh-token',
+            ErrorCodes.INVALID_REFRESH_TOKEN,
             'Invalid Token, please reauthenticate to generate a new token pair'
           )
         );
@@ -334,7 +350,7 @@ export const refreshAccessToken = async (
       next(
         new ServerError(
           403,
-          'expired-token',
+          ErrorCodes.EXPIRED_TOKEN,
           'The refresh token has expired, please authenticate again'
         )
       );
