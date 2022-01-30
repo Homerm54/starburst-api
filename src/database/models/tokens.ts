@@ -48,7 +48,7 @@ RefreshTokenSchema.statics.createToken = async function (user) {
     tokenInstance.token = _token;
     await tokenInstance.save();
   } else {
-    // In case teh user doesn't have any refresh token, a new one is created
+    // In case the user doesn't have any refresh token, a new one is created
     const docInstance = new this({
       token: _token,
       user: user._id,

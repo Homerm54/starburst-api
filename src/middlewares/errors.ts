@@ -1,11 +1,17 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { ServerError } from 'lib/error';
 
 /**
  * Catch any error either thrown or passed to the next function across the routes.
  * If the error is not an instance of {@link ServerError}, a 500 response is send.
  */
-const errorHandler = (err: any, req: Request, res: Response) => {
+const errorHandler = (
+  err: any,
+  req: Request,
+  res: Response,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _next: NextFunction
+) => {
   if (err instanceof ServerError) {
     res.status(err.statusCode).json({
       error: true,
@@ -13,7 +19,7 @@ const errorHandler = (err: any, req: Request, res: Response) => {
       message: err.message,
     });
   } else {
-    console.log(err);
+    console.error(err);
 
     res.status(500).json({
       error: true,

@@ -368,7 +368,6 @@ export const refreshAccessToken = async (
           'The refresh token has expired, please authenticate again'
         )
       );
-      return;
     }
   } catch (error) {
     next(error);

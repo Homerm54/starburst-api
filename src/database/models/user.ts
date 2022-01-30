@@ -66,13 +66,23 @@ UserSchema.plugin(timestampPlugIn);
 
 /** Encrypt the user password before saving it */
 UserSchema.pre('save', async function (next) {
-  // TODO: Check this, the password is reencrypted every time is updated
-  const hash = await bcrypt.hash(
-    this.get('password', null, { getters: false }),
-    saltRounds
-  );
+  let encryptPassword = false;
 
-  this.password = hash;
+  const modifiedFields = this.modifiedPaths();
+  modifiedFields.forEach((field) => {
+    if (field === 'password') encryptPassword = true;
+  });
+
+  // Also works for new users
+  if (encryptPassword) {
+    const hash = await bcrypt.hash(
+      this.get('password', null, { getters: false }),
+      saltRounds
+    );
+
+    this.password = hash;
+  }
+
   next();
 });
 
