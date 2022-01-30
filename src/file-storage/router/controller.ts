@@ -85,7 +85,6 @@ const generateRefreshToken = async (
     );
   } else {
     try {
-      console.log(user.fileStorageRefreshToken);
       const token = await account.getNewAccessToken(
         user.fileStorageRefreshToken
       );
@@ -96,6 +95,7 @@ const generateRefreshToken = async (
   }
 };
 
+// Enpoints to upload files are for testing only, no futher refinement is done
 const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
   const { file } = req;
   if (!file) {
@@ -106,28 +106,25 @@ const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
     await files.upload(
       req.params.accessToken,
       file.buffer,
-      '/a/hola.txt',
+      `/a/${file.originalname}`,
       true
     );
     res.send(true);
   }
 };
 
-const downloadFile = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  console.log(req.params.path);
-
-  const file = await files.get.file(
+const downloadFile = async (req: Request, res: Response) => {
+  const [file, metadata] = await files.get.file(
     req.body.file_service_token,
     `/${req.params.path}`
   );
+
+  res.setHeader('Content-Type', metadata.mimetype);
+  res.setHeader('Content-Length', metadata.size);
   res.send(file);
 };
 
-const deleteFile = async (req: Request, res: Response, next: NextFunction) => {
+const deleteFile = async (req: Request, res: Response) => {
   console.log(req.params.path);
 
   const file = await files.delete(

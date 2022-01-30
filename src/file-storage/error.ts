@@ -16,6 +16,9 @@ type AuthErrorCodes =
   | 'filestorage-access-denied';
 
 type FileOperationErrorCodes =
+  | 'unable-to-download'
+  | 'file_not_found'
+  | 'file-too-large'
   | 'filestorage-too-many-request'
   | 'service-fatal-error';
 
@@ -46,6 +49,16 @@ export const FileStorageErrorCodes = {
 
   /** A fatal or unexpected error ocurred */
   FATAL_ERROR: 'service-fatal-error' as ServiceErrorCodes,
+
+  // File operation errors
+  /** The payload of the operation is way too large to handle */
+  FILE_TOO_LARGE: 'file-too-large' as ServiceErrorCodes,
+
+  /** The requested file couldn't be found */
+  FILE_NOT_FOUND: 'file_not_found' as ServiceErrorCodes,
+
+  /** The requested file can't be downloaded, must use export */
+  UNABLE_TO_DOWNLOAD: 'unable-to-download' as ServiceErrorCodes,
 };
 
 /** Custom Error Class, to ease check in catch statements  */

@@ -11,10 +11,11 @@
 
 import axiosRaw from 'axios';
 import { variables } from 'lib/config';
-import { FileType, FolderType } from './types';
+import { FileMetadata, FileType, FolderType } from './types';
 import { ServerError } from 'lib/error';
 import { FileStorageError, FileStorageErrorCodes } from './error';
 import { dropboxFileAPI, dropboxAuthAPI, log } from './constants';
+import mime from 'mime-types';
 
 // Account Operations and Authorization Section
 
@@ -314,6 +315,23 @@ const getNewAccessToken = async (refresh_token: string) => {
 
 // Files Operations Section
 /**
+ * Currently, there are 3 methods to access files in dropbox:
+ * - Download the file directly
+ * - Get a preview of the file
+ * - Get a thumbnail
+ *
+ * Depending on the user needs, the files can be  sent to the client, the client
+ * edits them, and then back to the API to save.
+ * @see https://www.dropboxforum.com/t5/Dropbox-API-Support-Feedback/API-command-to-view-file-content-in-web-browser/td-p/283316
+ *
+ * Other interesting options are also:
+ * - List Folder, to get the metadata of the folders, useful to show a preview of what's in the folder
+ * - File Metadata
+ * - Copy files
+ * - Delete Batch
+ */
+
+/**
  * Upload a **new** file to Dropbox, or **overwrite** an existing one.
  * In order to overwrite, the file about to upload must have the same path
  * as an existing file.
@@ -321,11 +339,11 @@ const getNewAccessToken = async (refresh_token: string) => {
  * In case no overwrite, a new copy of the conflicted file is created with a "(1)"
  * in the name, or "(2)" depending on how many conflicted files are already.
  *
- * @param {string} accessToken The access token of the user account.
- * @param {Buffer} file The file that will be uploaded, must be in raw binary stream, or buffer, not in
+ * @param accessToken The access token of the user account.
+ * @param file The file that will be uploaded, must be in raw binary stream, or buffer, not in
  *  the file format
- * @param {string} path The path, inside the app folder, where the File will be uploaded
- * @param {boolean} [overwrite = false] If should overwrite the file in case of conflict.
+ * @param path The path, inside the app folder, where the File will be uploaded
+ * @param overwrite If should overwrite the file in case of conflict.
  * @see https://www.dropbox.com/developers/documentation/http/documentation#files-upload for
  * information about the enpoint, and the conflict resolution methods.
  */
@@ -334,7 +352,7 @@ const uploadFile = async (
   file: Buffer,
   path: string,
   overwrite = false
-) => {
+): Promise<FileMetadata> => {
   const options = {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -352,53 +370,73 @@ const uploadFile = async (
 
   try {
     const res = await dropboxFileAPI.post('/upload', file, options);
+    log('Result from uploading: ', res.data);
 
-    // TODO: Check error in response data
-    console.log(res.status, res.data);
+    return {
+      mimetype: mime.lookup(res.data.name) || 'application/octet-stream',
+      name: res.data.name,
+      id: res.data.id,
+      rev: res.data.rev,
+      server_modified: res.data.server_modified,
+      size: res.data.size,
+    };
   } catch (error) {
     if (axiosRaw.isAxiosError(error)) {
       if (error.response) {
-        // The request was made and the server responded with a status code outside of 2xx
         const status = error.response.status;
         const data = error.response.data;
-        console.error(status, data);
+
+        if (data.error) {
+          if (data.error['.tag'] === 'payload_too_large') {
+            throw new FileStorageError(FileStorageErrorCodes.FILE_TOO_LARGE);
+          } else {
+            console.error(status, data);
+            console.error(`Error in operation: ${data.error_summary}`);
+            throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
+          }
+        }
       }
     }
 
-    // Something happened in setting up the request that triggered an Error
+    // Either server didn't handled request, or something else happened
     console.error(error);
     throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
   }
 };
 
 /**
- * Currently, there are 3 methods to access files in dropbox:
- * - Download the file directly
- * - Get a preview of the file
- * - Get a thumbnail
- *
- * Depending on the user needs, the files can be  sent to the client, the client
- * edits them, and then back to the API to save.
- * @see https://www.dropboxforum.com/t5/Dropbox-API-Support-Feedback/API-command-to-view-file-content-in-web-browser/td-p/283316
- *
- * Other interesting options are also:
- * - List Folder, to get the metadata of the folders, useful to show a preview of what's in the folder
- * - File Metadata
- * - Copy files
- * - Delete Batch
- * TODO: Check dropbox paper
+ * *Download* the any given file directly.
+ * @param accessToken The access token related with the user account.
+ * @param path The path of the file about to download.
+ * @returns Array containing the file, in ArrayBuffer format, and the file metadata.
  */
-const getFile = async (accessToken: string, path: string) => {
-  try {
-    const res = await dropboxFileAPI.post('/download', null, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Dropbox-API-Arg': JSON.stringify({ path }),
-      },
-    });
+const getFile = async (
+  accessToken: string,
+  path: string
+): Promise<[string, FileMetadata]> => {
+  const options = {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Dropbox-API-Arg': JSON.stringify({ path }),
+    },
+  };
 
-    console.log(res.status, res.headers, typeof res.data);
-    return res.data;
+  try {
+    const res = await dropboxFileAPI.post('/download', null, options);
+    const apiResult = JSON.parse(res.headers['dropbox-api-result']);
+    log('Result from downloading the file: %o', apiResult);
+
+    return [
+      res.data,
+      {
+        mimetype: mime.lookup(apiResult.name) || 'application/octet-stream',
+        name: apiResult.name,
+        id: apiResult.id,
+        rev: apiResult.rev,
+        server_modified: apiResult.server_modified,
+        size: apiResult.size,
+      },
+    ];
   } catch (error) {
     if (error instanceof ServerError) {
       throw error;
@@ -407,11 +445,24 @@ const getFile = async (accessToken: string, path: string) => {
     if (axiosRaw.isAxiosError(error)) {
       if (error.response) {
         const data = error.response.data;
+        if (data.error) {
+          if (data.error['.tag'] === 'path') {
+            throw new FileStorageError(FileStorageErrorCodes.FILE_NOT_FOUND);
+          } else if (data.error['.tag'] === 'unsupported_file') {
+            throw new FileStorageError(
+              FileStorageErrorCodes.UNABLE_TO_DOWNLOAD
+            );
+          } else {
+            console.error(
+              `Error Summary in dropbox: ${data.error_summary}`,
+              data.error
+            );
+          }
+        }
         const status = error.response.status;
 
         console.error(status, data);
       }
-      console.error(error);
       throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
     }
 
@@ -425,16 +476,24 @@ const getFilePreview = () => {
 const getFileThumbnail = () => {
   // TODO:
 };
-// files/uplad too, modify the mode param
-const updateFile = () => {
-  // check rev, from revision
-  // this will determine the conflic
-  // or use the overwrite force overwrite
-};
-// files/delete
-const deleteFile = async (accessToken: string, path: string) => {
+
+/**
+ * Deletes a file *or folder* at a given path.
+ * If the path is a folder, all its contents will be deleted too.
+ *
+ * This function is intended to be used for individual deletes, and will yield
+ * an error if trying to deleted too many files for a single folder, in this case, use
+ * a delete batch operation.
+ *
+ * @param accessToken The access token of the user account.
+ * @param path The path of the file, or folder, that will be deleted.
+ */
+const deleteFileOrFolder = async (
+  accessToken: string,
+  path: string
+): Promise<FileMetadata> => {
   try {
-    const res = await dropboxAuthAPI.post(
+    const { data } = await dropboxAuthAPI.post(
       '/files/delete_v2',
       { path },
       {
@@ -443,24 +502,33 @@ const deleteFile = async (accessToken: string, path: string) => {
         },
       }
     );
-    console.log(res.status, res.data);
 
-    if (res.data.error) {
-      const error = res.data.error['.tag'];
-      // TODO: Throw error here!
-    }
+    return {
+      mimetype: mime.lookup(data.name) || 'application/octet-stream',
+      name: data.name,
+      id: data.id,
+      rev: data.rev,
+      server_modified: data.server_modified,
+      size: data.size,
+    };
   } catch (error) {
     if (axiosRaw.isAxiosError(error)) {
       if (error.response) {
         // The request was made and the server responded with a status code outside of 2xx
         const status = error.response.status;
         const data = error.response.data;
-        console.error(status, data);
+
+        if (data.error) {
+          console.error(`Error type: ${data.error['.tag']}`);
+        } else {
+          console.error(status, data);
+        }
       }
+    } else {
+      console.error(error);
     }
 
     // Something happened in setting up the request that triggered an Error
-    console.error(error);
     throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
   }
 };
@@ -479,47 +547,6 @@ const files = {
     thumbnail: getFileThumbnail,
     preview: getFilePreview,
   },
-  update: updateFile,
-  delete: deleteFile,
+  delete: deleteFileOrFolder,
 };
 export { account, files };
-
-/**
- * This is with no redirect_uri
- * Dropbox responds with the code: MDyQ1TYEicgAAAAAAAAANHG4nsAn1ZgLAYAITbrD6PA
- * https://www.dropbox.com/oauth2/authorize?client_id=kif0d4fv1k8zfqa&token_access_type=offline&response_type=code
- * 
- * Response from finish auth flow:
- {
-    "access_token": "sl.BAi3MYZoL_aJIvllju-GyHnA0Gg5W9Jss-Oq5SfYxRndtPl8Hsb40bdb1Lp4zlHG3nueh8GfiGpBYaGMU6VF_2UPonwe4GmnPp7pbDXlPgXruqwUQbgf9pckh3XjOBFHNf_NoKY",
-    "token_type": "bearer",
-    "expires_in": 14400,
-    "refresh_token": "wOnByKf4HWkAAAAAAAAAAZ5LbeNphzaoeFnpfMyA76i1PpwTJrID9G87YTKT5IWM",
-    "scope": "account_info.read files.content.read files.content.write files.metadata.read files.metadata.write",
-    "uid": "4317086384",
-    "account_id": "dbid:AADrp8AjFZd-e_qd1yQ77NCdu6gmrU5T6qA"
-}
-
- * Response from generating a new access token
-{
-    "access_token": "sl.BAiMQHJt495E1hgjr1ggOh9uyRRnnQQlysgJ3WLtWGSiG23iMcs3tLKUkD-twBU6hUP8TjlXgEy6iu3Tlt8Pbpk9F9TJP8O1mTD3LcdYto8NdhlrWbkTj3uV9tJwRNZGRJww010",
-    "token_type": "bearer",
-    "expires_in": 14400
-}
-
- {
-  metadata: {
-    '.tag': 'file',
-    name: '1.png',
-    path_lower: '/a/1.png',
-    path_display: '/a/1.png',
-    id: 'id:St3LmJRPlZUAAAAAAAABbQ',
-    client_modified: '2021-09-05T21:44:01Z',
-    server_modified: '2022-01-27T01:53:32Z',
-    rev: '5d68695eec9628c9436a1',
-    size: 49141,
-    is_downloadable: true,
-    content_hash: 'e5a1cd68b52e4ec0c4920e3194c88ae7bc228512ede0d40d71982883cdc0427b'
-  }
-}
- */
