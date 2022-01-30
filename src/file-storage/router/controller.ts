@@ -1,7 +1,9 @@
+import { DatabaseErrorCodes } from 'database/error';
 import { UserModel } from 'database/models/user';
 import { NextFunction, Request, Response } from 'express';
 import { account, files } from 'file-storage';
-import { ServerError } from 'middlewares/errors';
+import { FileStorageErrorCodes } from 'file-storage/error';
+import { ServerError } from 'lib/error';
 
 /**
  * Get the user's metadata in the file storage service, currently yields:
@@ -37,10 +39,12 @@ const finishAuthFlow = async (
   const user = await UserModel.findById(uid);
 
   if (!user) {
-    next(new ServerError(404, 'user-not-found', 'User not found'));
+    next(
+      new ServerError(404, DatabaseErrorCodes.USER_NOT_FOUND, 'User not found')
+    );
   } else if (!req.body.code) {
     next(
-      new ServerError(400, 'missing-param', 'Missing code param in request')
+      new ServerError(400, 'invalid-params', 'Missing code param in request')
     );
   } else {
     try {
@@ -75,8 +79,8 @@ const generateRefreshToken = async (
     next(
       new ServerError(
         401,
-        'not-authenticated',
-        "User hasn't completed the File Service Authentication Flow"
+        FileStorageErrorCodes.PENDING_AUTH_FLOW,
+        "The user has not completed the authentication flow, and hence, there's missing data"
       )
     );
   } else {
@@ -95,7 +99,9 @@ const generateRefreshToken = async (
 const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
   const { file } = req;
   if (!file) {
-    next(new ServerError(400, 'no-file', 'There is no file in the request'));
+    next(
+      new ServerError(400, 'invalid-params', 'There is no file in the request')
+    );
   } else {
     await files.upload(
       req.params.accessToken,

@@ -1,5 +1,4 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { ServerError } from './errors';
 
 const jsonParser = express.json();
 

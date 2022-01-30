@@ -17,7 +17,7 @@ type Token = {
  * @param {string} uid The uid of the user in the database, used as token payload.
  * @returns {string} The token, signed and ready to be send to the client.
  */
-export const generateAccessToken = (uid: string): Promise<Token> => {
+export const generateAccessToken = (uid: string): Promise<string> => {
   log('Generating access token...');
 
   return new Promise((resolve, reject) => {

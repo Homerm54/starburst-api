@@ -5,12 +5,14 @@ import {
   generateRefreshToken,
   getUserMetadata,
   uploadFile,
-} from 'file-storage/controller';
+} from 'file-storage/router/controller';
 import express, { NextFunction, Request, Response } from 'express';
-import { ServerError } from 'middlewares/errors';
 import { isAuth } from 'auth/controller';
 import multer from 'multer';
 import { variables } from 'lib/config';
+import { ServerError } from 'lib/error';
+import { FileStorageErrorCodes } from 'file-storage/error';
+
 const storage = multer.memoryStorage();
 const fileMiddleware = multer({ storage }).single('File');
 
@@ -18,8 +20,8 @@ const fileMiddleware = multer({ storage }).single('File');
 const isFileServiceAuth = (req: Request, res: Response, next: NextFunction) => {
   const tokenError = new ServerError(
     400,
-    'missing-service-token',
-    'The service token used to authenticate wiht dropbox is missing from the headers'
+    FileStorageErrorCodes.MISSING_ACCESS_TOKEN,
+    'The expected access token to interact with the API is not present in the headers'
   );
   const serviceToken = req.headers['file-service-authorization'];
   const trueToken =

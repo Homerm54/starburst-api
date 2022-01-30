@@ -12,42 +12,17 @@
 import axiosRaw from 'axios';
 import { variables } from 'lib/config';
 import { FileType, FolderType } from './types';
-import debug from 'debug';
 import { ServerError } from 'lib/error';
-import {
-  basicErrorInterceptor,
-  FileStorageError,
-  FileStorageErrorCodes,
-} from './error';
-
-const log = debug('file-system:index');
-
-// Constants and objects
-const APP_FOLDER_NAME = 'starburst-data';
-const dropboxAPI = axiosRaw.create({
-  baseURL: 'https://api.dropboxapi.com/2',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-const dropboxFileAPI = axiosRaw.create({
-  baseURL: 'https://content.dropboxapi.com/2/files',
-  headers: {
-    'Content-Type': 'application/octet-stream',
-  },
-});
-
-dropboxAPI.interceptors.response.use((value) => value, basicErrorInterceptor);
-dropboxFileAPI.interceptors.response.use(
-  (value) => value,
-  basicErrorInterceptor
-);
+import { FileStorageError, FileStorageErrorCodes } from './error';
+import { dropboxFileAPI, dropboxAuthAPI, log } from './constants';
 
 // Account Operations and Authorization Section
+
 /** Total size of the folder passed, with subfolders, in bytes  */
 type TotalSize = number;
 /** Number of files inside the given folder, and it's subfolders  */
 type TotalFiles = number;
+
 /**
  * Calculates the number of files in any given folder, along with the total
  * size used by said folder.
@@ -72,7 +47,7 @@ const getFolderAnalitics = async (
     );
     // If cursor passed, get the files and folders that couldn't be
     // fetched on the last call to the endpoint
-    res = await dropboxAPI.post(
+    res = await dropboxAuthAPI.post(
       '/files/list_folder/continue',
       { cursor: data.cursor, path: data.path },
       {
@@ -84,7 +59,7 @@ const getFolderAnalitics = async (
   } else {
     // If no cursor, then get the files and folders from the passed path
     log(`Getting data from the folder: ${data.path}`);
-    res = await dropboxAPI.post(
+    res = await dropboxAuthAPI.post(
       '/files/list_folder',
       { path: data.path },
       {
@@ -153,7 +128,7 @@ const getFolderAnalitics = async (
  */
 const getSpaceAnalitics = async (accessToken: string) => {
   try {
-    const res = await dropboxAPI.post('/users/get_space_usage', null, {
+    const res = await dropboxAuthAPI.post('/users/get_space_usage', null, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -217,7 +192,7 @@ const finishAuthFlow = async (code: string) => {
   data.append('grant_type', 'authorization_code');
 
   try {
-    const res = await dropboxAPI({
+    const res = await dropboxAuthAPI({
       url: 'https://api.dropboxapi.com/oauth2/token',
       method: 'POST',
       headers: {
@@ -286,7 +261,7 @@ const getNewAccessToken = async (refresh_token: string) => {
   data.append('grant_type', 'refresh_token');
 
   try {
-    const res = await dropboxAPI({
+    const res = await dropboxAuthAPI({
       url: 'https://api.dropboxapi.com/oauth2/token',
       method: 'POST',
       headers: {
@@ -337,11 +312,23 @@ const getNewAccessToken = async (refresh_token: string) => {
   }
 };
 
-// Files Operations
+// Files Operations Section
 /**
- * There's also a file search thing, by tags or name, make sure to check it out
+ * Upload a **new** file to Dropbox, or **overwrite** an existing one.
+ * In order to overwrite, the file about to upload must have the same path
+ * as an existing file.
+ *
+ * In case no overwrite, a new copy of the conflicted file is created with a "(1)"
+ * in the name, or "(2)" depending on how many conflicted files are already.
+ *
+ * @param {string} accessToken The access token of the user account.
+ * @param {Buffer} file The file that will be uploaded, must be in raw binary stream, or buffer, not in
+ *  the file format
+ * @param {string} path The path, inside the app folder, where the File will be uploaded
+ * @param {boolean} [overwrite = false] If should overwrite the file in case of conflict.
+ * @see https://www.dropbox.com/developers/documentation/http/documentation#files-upload for
+ * information about the enpoint, and the conflict resolution methods.
  */
-// files/upload
 const uploadFile = async (
   accessToken: string,
   file: Buffer,
@@ -365,6 +352,8 @@ const uploadFile = async (
 
   try {
     const res = await dropboxFileAPI.post('/upload', file, options);
+
+    // TODO: Check error in response data
     console.log(res.status, res.data);
   } catch (error) {
     if (axiosRaw.isAxiosError(error)) {
@@ -408,7 +397,7 @@ const getFile = async (accessToken: string, path: string) => {
       },
     });
 
-    console.log(res.status, res.headers);
+    console.log(res.status, res.headers, typeof res.data);
     return res.data;
   } catch (error) {
     if (error instanceof ServerError) {
@@ -445,7 +434,7 @@ const updateFile = () => {
 // files/delete
 const deleteFile = async (accessToken: string, path: string) => {
   try {
-    const res = await dropboxAPI.post(
+    const res = await dropboxAuthAPI.post(
       '/files/delete_v2',
       { path },
       {
@@ -493,7 +482,7 @@ const files = {
   update: updateFile,
   delete: deleteFile,
 };
-export { APP_FOLDER_NAME, account, files };
+export { account, files };
 
 /**
  * This is with no redirect_uri

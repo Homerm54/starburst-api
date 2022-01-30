@@ -15,7 +15,7 @@ import debug from 'debug';
 import { verifyAccessToken, generateAccessToken } from 'auth/token';
 import { AuthorizartionErrorCodes, TokenError } from 'auth/error';
 import { variables } from 'lib/config';
-import { ServerError } from 'middlewares/errors';
+import { ServerError } from 'lib/error';
 import { RefreshToken } from 'database/models/tokens';
 import { DatabaseErrorCodes } from 'database/error';
 

@@ -8,6 +8,8 @@ import { ServerError } from 'lib/error';
 
 /** Error codes that the Token module can, and will throw */
 type AuthErrorCodes =
+  | 'pending-auth-flow'
+  | 'missing-filestorage-access-token'
   | 'invalid-authentication-code'
   | 'invalid-filestorage-access-token'
   | 'invalid-filestorage-refresh-token'
@@ -20,6 +22,12 @@ type FileOperationErrorCodes =
 export type ServiceErrorCodes = AuthErrorCodes | FileOperationErrorCodes;
 
 export const FileStorageErrorCodes = {
+  /** The user has not completed the authentication flow, and hence, there's missing data */
+  PENDING_AUTH_FLOW: 'pending-auth-flow' as ServiceErrorCodes,
+
+  /** The expected access token to interact with the API is not present in the headers */
+  MISSING_ACCESS_TOKEN: 'missing-filestorage-access-token' as ServiceErrorCodes,
+
   /** The given authentication code is invalid or has expired */
   INVALID_AUTH_CODE: 'invalid-authentication-code' as ServiceErrorCodes,
 
