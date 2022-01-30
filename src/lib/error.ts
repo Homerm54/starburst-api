@@ -1,8 +1,12 @@
 import { AuthorizationErrorCodes, TokenErrorCodes } from 'auth/error';
+import { DatabaseErrorCodes } from 'database/error';
+import { ServiceErrorCodes } from 'file-storage/error';
 
 type ErrorCodes =
   | TokenErrorCodes
   | AuthorizationErrorCodes
+  | DatabaseErrorCodes
+  | ServiceErrorCodes
   | 'unknown-error'
   | 'unauthorized'
   | 'invalid-params' // The request was made with missing or invalid parameters

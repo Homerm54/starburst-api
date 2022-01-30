@@ -47,4 +47,4 @@ const invalidHTTP = (req: Request, res: Response) => {
   });
 };
 
-export { ServerError, notFound, invalidHTTP, errorHandler };
+export { notFound, invalidHTTP, errorHandler };

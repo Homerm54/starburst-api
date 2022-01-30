@@ -1,33 +1,7 @@
 /**
- * Same OAuth 2.0 Flow
+ * @author Omer Marquez <omer.marquezt@gmail.com>
+ * @file Dropbox Connection File, all Dropbox related functions and types declared here.
  * @module FileStorageManager File Storage Module based on the **Dropbox** Service.
- *
- * # How this Works
- * This module can be seen as a Dropbox "SDK" that exposes the functions, constants and tools needed for
- * the services to access the File Storage System, thus, this folder contains all the Dropbox related
- * logic, and no direct dropbox import, or call shall be outside of this module, all the operations are
- * done through functions calls.
- *
- * The connection with Dropbox is done via the HTTP API, and the authentication is done via an unique
- * access token, this token is a relationship between this Application, the Dropbox account of the user,
- * and the allowed scopes where this application can act on.
- *
- * The token is stored in the user account, and is requested by the functions, then, operatoins are performed
- * using the stored token as the only authorization and identification mechanism.
- *
- * This is just the File Storage **service**, so no use of database here, in case any **system** needs to
- * keep a file and metadata in the database, such system will need to create a model and make uses of the
- * functions provided by this service.
- *
- * # How to get the token TODO: Move this to client
- * The user must authorize the app to perform operations on the user account, so the user must be redirected
- * to the Dropbox Authorization page, a token is returned, and the user must introduce the token in the client.
- * - Link: https://developers.dropbox.com/oauth-guide, see Implementing Code Flow
- *
- * # Features
- * - Account Authentication
- * - CRUD operations on files in Dropbox
- * - Basic Account Information retrival
  */
 
 /**
@@ -37,9 +11,14 @@
 
 import axiosRaw from 'axios';
 import { variables } from 'lib/config';
-import { ServerError } from 'middlewares/errors';
 import { FileType, FolderType } from './types';
 import debug from 'debug';
+import { ServerError } from 'lib/error';
+import {
+  basicErrorInterceptor,
+  FileStorageError,
+  FileStorageErrorCodes,
+} from './error';
 
 const log = debug('file-system:index');
 
@@ -58,59 +37,11 @@ const dropboxFileAPI = axiosRaw.create({
   },
 });
 
-function basicErrorInterceptor(error: any) {
-  const status = error.response.status;
-  const data = error.response.data;
-
-  switch (status) {
-    case 401: {
-      // Bad or expired access token
-      throw new ServerError(
-        401,
-        'token-error',
-        'token has expired or has been revoked by the user'
-      );
-    }
-
-    case 403: {
-      // Account access error, user isn't allowed
-      throw new ServerError(
-        403,
-        'access-denied',
-        'No token present in response'
-      );
-    }
-
-    case 429: {
-      // Too many request for this app, try again latter
-      throw new ServerError(
-        429,
-        'too-many-requests',
-        `Too many request from this API, try again in ${data.retry_after} seconds`
-      );
-    }
-
-    default:
-      throw error;
-  }
-}
-
 dropboxAPI.interceptors.response.use((value) => value, basicErrorInterceptor);
 dropboxFileAPI.interceptors.response.use(
   (value) => value,
   basicErrorInterceptor
 );
-
-class FileServiceError extends Error {
-  code: string;
-  message: string;
-
-  constructor(code: string, message?: string) {
-    super();
-    this.code = code;
-    this.message = message || '';
-  }
-}
 
 // Account Operations and Authorization Section
 /** Total size of the folder passed, with subfolders, in bytes  */
@@ -270,7 +201,7 @@ const getSpaceAnalitics = async (accessToken: string) => {
     }
 
     console.error(error);
-    throw new FileServiceError('unknow', 'New error, check logs for details');
+    throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
   }
 };
 
@@ -300,7 +231,11 @@ const finishAuthFlow = async (code: string) => {
     });
 
     if (!res.data.access_token || !res.data.refresh_token) {
-      throw new ServerError(500, 'api-error', 'No token present in response');
+      throw new ServerError(
+        500,
+        FileStorageErrorCodes.FATAL_ERROR,
+        'No access token present in Dropbox response'
+      );
     }
 
     return {
@@ -318,8 +253,8 @@ const finishAuthFlow = async (code: string) => {
         if (data.error === 'invalid_grant') {
           throw new ServerError(
             400,
-            'invalid-code',
-            "Code expired or doesn't Exist"
+            FileStorageErrorCodes.INVALID_AUTH_CODE,
+            'Authentication code is invalid or has expired, reauthtenticate'
           );
         }
 
@@ -329,7 +264,11 @@ const finishAuthFlow = async (code: string) => {
 
     // Something happened in setting up the request that triggered an Error
     console.error(error);
-    throw new ServerError(500, 'unknow');
+    throw new ServerError(
+      500,
+      FileStorageErrorCodes.FATAL_ERROR,
+      'unknown error'
+    );
   }
 };
 
@@ -364,7 +303,7 @@ const getNewAccessToken = async (refresh_token: string) => {
     if (!res.data.access_token) {
       throw new ServerError(
         500,
-        'service-error',
+        FileStorageErrorCodes.FATAL_ERROR,
         'No token present in response'
       );
     }
@@ -383,14 +322,14 @@ const getNewAccessToken = async (refresh_token: string) => {
         if (status === 400) {
           throw new ServerError(
             400,
-            'invalid-token',
-            'Refresh token is invalid or expired, either way, reauthenticate to get a new one.'
+            FileStorageErrorCodes.INVALID_REFRESH_TOKEN,
+            'Refresh token is invalid or expired, reauthenticate to get a new one.'
           );
         }
         console.error(status, data);
       }
       console.error(error);
-      throw new FileServiceError('unkwon');
+      throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
     }
 
     console.error(error);
@@ -439,7 +378,7 @@ const uploadFile = async (
 
     // Something happened in setting up the request that triggered an Error
     console.error(error);
-    throw new ServerError(500, 'unknow');
+    throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
   }
 };
 
@@ -484,15 +423,19 @@ const getFile = async (accessToken: string, path: string) => {
         console.error(status, data);
       }
       console.error(error);
-      throw new FileServiceError('unkwon');
+      throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
     }
 
     console.error(error);
     throw error;
   }
 };
-const getFilePreview = () => {};
-const getFileThumbnail = () => {};
+const getFilePreview = () => {
+  // TODO:
+};
+const getFileThumbnail = () => {
+  // TODO:
+};
 // files/uplad too, modify the mode param
 const updateFile = () => {
   // check rev, from revision
@@ -529,7 +472,7 @@ const deleteFile = async (accessToken: string, path: string) => {
 
     // Something happened in setting up the request that triggered an Error
     console.error(error);
-    throw new ServerError(500, 'unknow');
+    throw new FileStorageError(FileStorageErrorCodes.FATAL_ERROR);
   }
 };
 
@@ -550,7 +493,7 @@ const files = {
   update: updateFile,
   delete: deleteFile,
 };
-export { FileServiceError, APP_FOLDER_NAME, account, files };
+export { APP_FOLDER_NAME, account, files };
 
 /**
  * This is with no redirect_uri

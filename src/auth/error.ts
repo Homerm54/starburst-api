@@ -19,7 +19,7 @@ export type AuthorizationErrorCodes =
   | 'unauthorized'
   | 'forbidden';
 
-export const ErrorCodes = {
+export const AuthorizartionErrorCodes = {
   /** The email has already been used by another user, and hence, no new user can be created  */
   EMAIL_IN_USE: 'email-in-user' as AuthorizationErrorCodes,
 
