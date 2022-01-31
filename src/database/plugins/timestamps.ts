@@ -1,13 +1,5 @@
 import { Schema } from 'mongoose';
 
-interface ITimestamps {
-  /** Date when the docuemnt was created and saved in the Database */
-  createdAt: Date;
-
-  /** Last time the document was modified and saved, using the .save method */
-  updatedAt: Date;
-}
-
 /**
  * Stores and updates an updatedAt and createdAt field in the document,
  * **only** when the save method in invoqued.
@@ -31,4 +23,4 @@ function timestampPlugIn(schema: Schema) {
   });
 }
 
-export { timestampPlugIn, ITimestamps };
+export { timestampPlugIn };

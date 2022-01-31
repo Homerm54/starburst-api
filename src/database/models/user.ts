@@ -1,34 +1,13 @@
-import { ITimestamps, timestampPlugIn } from 'database/plugins/timestamps';
-import { Schema, model, Document } from 'mongoose';
+import { timestampPlugIn } from 'database/plugins/timestamps';
+import { Schema, model } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
+import { User } from 'database/types';
 
 const saltRounds = 12;
 
 /** The name of the collection in the MongoDB Database, and where user docs will be saved */
 const collectionName = 'users';
-
-export interface User extends ITimestamps, Document {
-  /** Virtual prop representing the user's username, derived from email */
-  username: string;
-
-  /** Email of the user registered */
-  email: string;
-
-  /** Password of the user, encrypted and with custom getter to return undefined */
-  password: string;
-
-  /** Whether the user is admin or not */
-  isAdmin: boolean;
-
-  // Methods
-  /**
-   * Check if a password passed belongs to the user.
-   * @param password the password about to compare
-   * @returns {Boolean} Whether the password is correct or not
-   */
-  isValidPassword: (password: string) => Promise<boolean>;
-}
 
 const UserSchema = new Schema<User>(
   {
@@ -57,6 +36,19 @@ const UserSchema = new Schema<User>(
       type: Boolean,
       default: false,
     },
+
+    // Service Related Fields
+    // File Storage
+    fileStorageRefreshToken: {
+      type: String,
+      require: false,
+      default: null,
+    },
+    fileStorageServiceAccountId: {
+      type: String,
+      require: false,
+      default: null,
+    },
   },
   {
     toJSON: { getters: true },
@@ -74,22 +66,31 @@ UserSchema.plugin(timestampPlugIn);
 
 /** Encrypt the user password before saving it */
 UserSchema.pre('save', async function (next) {
-  const user = this;
-  const hash = await bcrypt.hash(
-    user.get('password', null, { getters: false }),
-    saltRounds
-  );
+  let encryptPassword = false;
 
-  this.password = hash;
+  const modifiedFields = this.modifiedPaths();
+  modifiedFields.forEach((field) => {
+    if (field === 'password') encryptPassword = true;
+  });
+
+  // Also works for new users
+  if (encryptPassword) {
+    const hash = await bcrypt.hash(
+      this.get('password', null, { getters: false }),
+      saltRounds
+    );
+
+    this.password = hash;
+  }
+
   next();
 });
 
 // Schema Methods
 UserSchema.methods.isValidPassword = async function (password) {
-  const user = this;
   const compare = await bcrypt.compare(
     password,
-    user.get('password', null, { getters: false })
+    this.get('password', null, { getters: false })
   );
 
   return compare;

@@ -58,7 +58,7 @@ const db: IDB = {
     });
 
     this.instance.on('disconnected', (event) => {
-      console.log('Server disconnected from DB');
+      console.log('Server disconnected from DB, event:', event);
       this.connected = false;
     });
 

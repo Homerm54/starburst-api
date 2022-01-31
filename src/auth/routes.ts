@@ -8,7 +8,7 @@ import {
   signIn,
   signOut,
   updateCredentials,
-  validateJWT,
+  isAuth,
 } from './controller';
 
 /**
@@ -25,16 +25,16 @@ authRouter.post('/', checkEmailInUse, createUser);
 /**
  *
  */
-authRouter.post('/update-credentials', validateJWT, updateCredentials);
+authRouter.post('/update-credentials', isAuth, updateCredentials);
 
 /**
  * Status endpoint, currently doesn't check anything, just return ok
  * which means that the server is active and can recieve requests
  */
-authRouter.delete('/', validateJWT, deleteUser);
+authRouter.delete('/', isAuth, deleteUser);
 
 authRouter.post('/signin', /* Email and password validation */ signIn);
-authRouter.post('/signout', validateJWT, signOut);
+authRouter.post('/signout', isAuth, signOut);
 authRouter.post('/refresh-access-token', refreshAccessToken);
 
 authRouter.use(invalidHTTP);

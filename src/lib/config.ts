@@ -20,8 +20,13 @@ const getEnvVariable = (varName: string) => {
  */
 const variables = {
   JWT_SECRET_KEY: getEnvVariable('JWT_SECRET_KEY'),
+
   DB_USER: getEnvVariable('DB_USER'),
   DB_PASSWORD: getEnvVariable('DB_PASSWORD'),
+
+  DROPBOX_APP_KEY: getEnvVariable('DROPBOX_APP_KEY'),
+  DROPBOX_APP_SECRET: getEnvVariable('DROPBOX_APP_SECRET'),
+  DROPBOX_REDIRECT_URI: null, //getEnvVariable('DROPBOX_REDIRECT_URI'),
 
   devMode: process.env.NODE_ENV === 'development',
   PORT: process.env.PORT || 5000,

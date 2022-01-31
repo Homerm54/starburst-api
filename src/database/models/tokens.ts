@@ -1,30 +1,12 @@
-import { ITimestamps, timestampPlugIn } from 'database/plugins/timestamps';
-import { Schema, model, Document, Model } from 'mongoose';
+import { timestampPlugIn } from 'database/plugins/timestamps';
+import { Schema, model, Model } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import { tokenConfig } from 'auth/config';
 import ms from 'ms';
-import { User } from './user';
-
-/**
- * TODO: Implement rotation
- */
+import { IRefreshToken, User } from 'database/types';
 
 /** Collection Name in the MongoDB where the tokens will be saved */
 const collectionName = 'refresh_tokens';
-
-/**
- * Interface of the refresh token model.
- */
-export interface IRefreshToken extends ITimestamps, Document {
-  /** The token instance, a simple string randomly generated, or null in case the user logged out */
-  token: string | null;
-
-  /** The user to whose token belongs to */
-  user: typeof Schema.Types.ObjectId;
-
-  /** The date when the token is no longer usable, to generate new access tokens */
-  expiryDate: Date;
-}
 
 /** Interface that holds the static methods of the model */
 interface RefreshTokenModel extends Model<IRefreshToken> {
@@ -66,7 +48,7 @@ RefreshTokenSchema.statics.createToken = async function (user) {
     tokenInstance.token = _token;
     await tokenInstance.save();
   } else {
-    // In case teh user doesn't have any refresh token, a new one is created
+    // In case the user doesn't have any refresh token, a new one is created
     const docInstance = new this({
       token: _token,
       user: user._id,

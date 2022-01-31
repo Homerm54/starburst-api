@@ -8,6 +8,8 @@ import { httpLogger } from 'middlewares/logger';
 import { variables } from 'lib/config';
 import { notFound, errorHandler } from 'middlewares/errors';
 import { sendAPIDocumentationFile } from 'routes/docs';
+import { fileServiceRouter } from 'file-storage/router';
+import { parser } from 'middlewares/parser';
 
 const app: Express = express();
 
@@ -15,7 +17,7 @@ const app: Express = express();
 app.use(helmet());
 app.use(httpLogger);
 // parse application/json body type, the only one supported by this API
-app.use(express.json());
+app.use(parser);
 
 const whiteList = [
   'http://localhost:3736',
@@ -38,9 +40,12 @@ app.use(cors(corsOptions));
 app.use(statusRouter);
 app.get('/api-docs', sendAPIDocumentationFile);
 
-// ------ Services
+// ---------------- Services
 // AUTH ENDPOINTS
 app.use('/auth', authRouter);
+app.use('/file-service', fileServiceRouter);
+
+// ---------------- Modules
 
 // Last handlers
 app.use(notFound);

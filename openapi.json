@@ -44,7 +44,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }
@@ -105,7 +105,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }
@@ -116,7 +116,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }
@@ -171,7 +171,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }
@@ -237,7 +237,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }
@@ -248,7 +248,7 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }
@@ -339,25 +339,6 @@
     "/auth/refresh-access-token": {
       "post": {
         "description": "Refresh the *Access Token* of a user, returning a new pair of tokens, thus, the returned refresh token is the new refresh token that will be used to get a new Access Token the next time, invalidating the previous Refresh Token. If the Refresh Token is invalid, or expired, the user must Sign In again, to generate a new token pair.",
-        "requestBody": {
-          "required": true,
-          "description": "Credentials to sign an user in",
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "email": {
-                    "type": "string"
-                  },
-                  "password": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "New Token Pair generated successfully",
@@ -373,7 +354,7 @@
                       "type": "string"
                     },
                     "ok": {
-                      "type": "string"
+                      "type": "boolean"
                     }
                   }
                 }
@@ -385,7 +366,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }
@@ -395,7 +376,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }
@@ -405,7 +386,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "$/components/schemas/Error"
                 }
               }
             }

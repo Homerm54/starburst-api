@@ -1,58 +1,23 @@
 /**
  * @module Authentication
- * @file Middlewares and Endpoints related to the authentication and authorization service inside the API.
  * @author Omer Marquez <omer.marquezt@gmail.com>
+ * @file Middlewares and Endpoints related to the authentication and authorization service inside
+ * the API.
+ * This file, along with the middlewares and endpoints are the only source of code from where all the
+ * authentication service dwells. Hence, here is defined how the Auth Service work, caveats and general rules.
  *
- * This file, along with the middlewares and endpoints are the single source of coode from where all the
- * authentication service live. Hence, here is defined how the Auth Service work, caveats and general rules.
- *
- * ## Tokens
- *
- * The auth service is token drived, which means that request to secured routes are checked with the
- * **authorization** token in the header of the request. Two types of tokens are used, **Access Token**
- * and **Refresh Tokens**.
- *
- * ### Access Tokens
- * This tokens are short live (less that an hour), and are the one that carries the information needed to
- * see who is requesting, access level, and other details needed to process the request. Anyone who holds
- * this token can interact with the API and it's routes, hence, it's important to keep then safetly store.
- *
- * Because of the power of this tokens they are short lived, if an evil user intercepts the token, there's
- * only a short frame for what the user can do.
- *
- * ### Refresh Tokens
- * Once an Access Token expires, a new one must be generated to keep interacting with the API. To avoid having
- * to reauthenticate every 15 minutes or so, a Refresh token is also issued along with the Access Token when
- * authenticated, using this token, a new Access Token can be generated without the need to send credentials
- * again to the server.
- *
- * The refresh token has a lifespam of up to 1 month, this way, a user can be singed client side up to 1 month,
- * without requiring to sign in again (authenticate again).
- *
- * ### Rotatory Refresh Token System
- * Because of the power of generating infinite access tokens, a **Rotatory Refresh Token System** is implemented,
- * this way, the absolute lifespam of the token pair is reduced, an in case an evil user intercepts any of the
- * tokens, the system can identify when a refresh token is reused, and log the user out of the system for security.
- *
- * This method lets the user by forever authenticated, as long as no token re-use is detected by the auth system or
- * no refesh token is expired due to **max inactive time**.
- *
- * The system will work storing the tokens in the database, keeping a "token history" for every user. How many
- * tokens are stored determines for how long the system is able to detect a reutilization of tokens.
- *
- * ## Sign Out
- * The sign out process just invalidates any active token, needing to sign in again on every device.
- *
- * @see folder: designs/auth for diagrams on the process
+ * @see README.md For more information on how this workds
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { UserModel } from 'database/models/user';
 import debug from 'debug';
-import { verifyAccessToken, generateAccessToken, TokenError } from 'auth/token';
+import { verifyAccessToken, generateAccessToken } from 'auth/token';
+import { AuthorizartionErrorCodes, TokenError } from 'auth/error';
 import { variables } from 'lib/config';
-import { ServerError } from 'middlewares/errors';
+import { ServerError } from 'lib/error';
 import { RefreshToken } from 'database/models/tokens';
+import { DatabaseErrorCodes } from 'database/error';
 
 const { devMode } = variables;
 
@@ -82,7 +47,7 @@ export const checkEmailInUse = async (
  * Validates the JWT in the request, and allow next middleware in the chain, storing the
  * user id inside `req.body.uid`.
  */
-export const validateJWT = async (
+export const isAuth = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -95,7 +60,7 @@ export const validateJWT = async (
     next(
       new ServerError(
         403,
-        'unauthorized',
+        AuthorizartionErrorCodes.UNAUTHORIZED,
         devMode ? 'Missing Authentication token' : 'Unauthorized Request'
       )
     );
@@ -104,15 +69,31 @@ export const validateJWT = async (
 
   try {
     const uid = await verifyAccessToken(token);
-    if (uid) {
-      req.body.uid = uid;
-      next();
-    }
+    req.body.uid = uid;
+    next();
   } catch (error) {
-    let code = 'unknow';
-    if (error instanceof TokenError) code = error.code;
-
-    next(new ServerError(401, code, 'Unauthorized Request'));
+    if (error instanceof TokenError) {
+      if (error.code === 'expired-token') {
+        next(
+          new ServerError(
+            401,
+            AuthorizartionErrorCodes.EXPIRED_TOKEN,
+            'Unauthorized Request'
+          )
+        );
+      } else {
+        next(
+          new ServerError(
+            401,
+            AuthorizartionErrorCodes.INVALID_REFRESH_TOKEN,
+            'Unauthorized Request'
+          )
+        );
+      }
+    } else {
+      console.error(error);
+      next(new ServerError(401, 'unknown-error', 'Unauthorized Request'));
+    }
   }
 };
 
@@ -126,21 +107,23 @@ export const validateAdmin = async (
 ) => {
   const { uid } = req.body;
 
-  if (!uid) {
-    next(new ServerError(400, 'missing-uid', 'Missing UID'));
-    return;
-  }
-  const user = await UserModel.findOne();
-
-  if (!user) {
-    next(new ServerError(404, 'user-not-found', 'User not found'));
-    return;
-  }
-
-  if (user.isAdmin) {
-    next();
-  } else {
-    next(new ServerError(403, 'forbidden', 'forbidden'));
+  try {
+    const user = await UserModel.findOne({ _id: uid }).orFail();
+    if (user.isAdmin) {
+      next();
+    } else {
+      next(
+        new ServerError(403, AuthorizartionErrorCodes.FORBIDDEN, 'forbidden')
+      );
+    }
+  } catch (error) {
+    next(
+      new ServerError(
+        404,
+        AuthorizartionErrorCodes.USER_NOT_FOUND,
+        'User not found'
+      )
+    );
   }
 };
 
@@ -162,9 +145,13 @@ export const createUser = async (
   );
 
   if (password.length < 6 || password.length > 12) {
-    const code = 'invalid-password';
-    const message = 'Invalid Password, length type is incorrect';
-    next(new ServerError(400, code, message));
+    next(
+      new ServerError(
+        400,
+        'invalid-params',
+        'Invalid Password, length type is incorrect'
+      )
+    );
     return;
   }
 
@@ -184,7 +171,13 @@ export const createUser = async (
     });
   } catch (error) {
     console.error(error);
-    next(new ServerError(500, 'unknown-error'));
+    next(
+      new ServerError(
+        500,
+        'unknown-error',
+        'An unexpected error ocurred, check logs for details'
+      )
+    );
   }
 };
 
@@ -204,7 +197,9 @@ export const deleteUser = async (
 
   const user = await UserModel.findOne({ _id: uid });
   if (!user) {
-    next(new ServerError(400, 'user-not-found', 'User not found'));
+    next(
+      new ServerError(400, DatabaseErrorCodes.USER_NOT_FOUND, 'User not found')
+    );
     return;
   }
 
@@ -213,7 +208,7 @@ export const deleteUser = async (
     next(
       new ServerError(
         401,
-        'unauthorized',
+        AuthorizartionErrorCodes.INVALID_CREDENTIALS,
         devMode ? 'Invalid Password' : 'Unauthorized Request'
       )
     );
@@ -226,7 +221,13 @@ export const deleteUser = async (
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error(error);
-    next(new ServerError(500, 'unknow-error'));
+    next(
+      new ServerError(
+        500,
+        'unknown-error',
+        'An unexpected error ocurred, check logs for details'
+      )
+    );
   }
 };
 
@@ -247,28 +248,35 @@ export const signIn = async (
   next: NextFunction
 ) => {
   const { email, password } = req.body;
-  const user = await UserModel.findOne({ email });
+  try {
+    const user = await UserModel.findOne({ email }).orFail();
 
-  if (!user) {
-    next(new ServerError(400, 'user-not-found', 'User not found'));
-    return;
+    const match = await user.isValidPassword(password);
+    if (!match) {
+      next(
+        new ServerError(
+          401,
+          AuthorizartionErrorCodes.INVALID_CREDENTIALS,
+          'Unable to authenticate'
+        )
+      );
+      return;
+    }
+
+    const accessToken = await generateAccessToken(user.id);
+    const refreshToken = await RefreshToken.createToken(user);
+    return res.json({
+      ok: true,
+      accessToken,
+      refreshToken,
+      username: user.username,
+      isAdmin: user.isAdmin,
+    });
+  } catch (error) {
+    next(
+      new ServerError(400, DatabaseErrorCodes.USER_NOT_FOUND, 'User not found')
+    );
   }
-
-  const match = await user.isValidPassword(password);
-  if (!match) {
-    next(new ServerError(401, 'auth-failed', 'Unable to authenticate'));
-    return;
-  }
-
-  const accessToken = await generateAccessToken(user.id);
-  const refreshToken = await RefreshToken.createToken(user);
-  return res.json({
-    ok: true,
-    accessToken,
-    refreshToken,
-    username: user.username,
-    isAdmin: user.isAdmin,
-  });
 };
 
 /**
@@ -322,7 +330,7 @@ export const refreshAccessToken = async (
       next(
         new ServerError(
           401,
-          'unauthorized',
+          AuthorizartionErrorCodes.INVALID_REFRESH_TOKEN,
           'Invalid Token, please reauthenticate to generate a new token pair'
         )
       );
@@ -337,7 +345,7 @@ export const refreshAccessToken = async (
         next(
           new ServerError(
             401,
-            'unauthorized',
+            AuthorizartionErrorCodes.INVALID_REFRESH_TOKEN,
             'Invalid Token, please reauthenticate to generate a new token pair'
           )
         );
@@ -356,11 +364,10 @@ export const refreshAccessToken = async (
       next(
         new ServerError(
           403,
-          'expired-token',
+          AuthorizartionErrorCodes.EXPIRED_TOKEN,
           'The refresh token has expired, please authenticate again'
         )
       );
-      return;
     }
   } catch (error) {
     next(error);

@@ -1,21 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
-
-/**
- * Errors thrown in the middlewares, used to keep an error structure with all needs
- * to allow the error handler middleware take an action.
- */
-class ServerError extends Error {
-  statusCode: number;
-  message: string;
-  code: string;
-
-  constructor(statusCode: number, code: string, message?: string) {
-    super();
-    this.code = code;
-    this.statusCode = statusCode;
-    this.message = message || 'No message';
-  }
-}
+import { NextFunction, Request, Response } from 'express';
+import { ServerError } from 'lib/error';
 
 /**
  * Catch any error either thrown or passed to the next function across the routes.
@@ -25,7 +9,8 @@ const errorHandler = (
   err: any,
   req: Request,
   res: Response,
-  next: NextFunction
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _next: NextFunction
 ) => {
   if (err instanceof ServerError) {
     res.status(err.statusCode).json({
@@ -34,6 +19,8 @@ const errorHandler = (
       message: err.message,
     });
   } else {
+    console.error(err);
+
     res.status(500).json({
       error: true,
       code: 'unknow',
@@ -66,4 +53,4 @@ const invalidHTTP = (req: Request, res: Response) => {
   });
 };
 
-export { ServerError, notFound, invalidHTTP, errorHandler };
+export { notFound, invalidHTTP, errorHandler };
