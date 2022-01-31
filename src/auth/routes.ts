@@ -10,6 +10,7 @@ import {
   updateCredentials,
   isAuth,
   validateSecret,
+  sendPasswordRecoveryEmail,
 } from './controller';
 
 /**
@@ -28,6 +29,8 @@ authRouter.post('/', validateSecret, checkEmailInUse, createUser);
  */
 authRouter.post('/update-credentials', isAuth, updateCredentials);
 
+authRouter.post('/recover-password', sendPasswordRecoveryEmail);
+
 /**
  * Status endpoint, currently doesn't check anything, just return ok
  * which means that the server is active and can recieve requests
@@ -37,7 +40,5 @@ authRouter.delete('/', isAuth, deleteUser);
 authRouter.post('/signin', /* Email and password validation */ signIn);
 authRouter.post('/signout', isAuth, signOut);
 authRouter.post('/refresh-access-token', refreshAccessToken);
-
-authRouter.use(invalidHTTP);
 
 export { authRouter };

@@ -18,6 +18,8 @@ import { variables } from 'lib/config';
 import { ServerError } from 'lib/error';
 import { RefreshToken } from 'database/models/tokens';
 import { DatabaseErrorCodes } from 'database/error';
+import { sendEmail } from 'mail';
+import { generatePasswordRecoveryEmail } from './utils';
 
 const { devMode } = variables;
 
@@ -256,6 +258,85 @@ export const updateCredentials = async (req: Request, res: Response) => {
   return res.json({ ok: true });
 };
 
+export const sendPasswordRecoveryEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { email, code, password } = req.body;
+
+  if (!email || !(code && password)) {
+    return next(
+      new ServerError(
+        400,
+        'invalid-params',
+        'Endpoint called with invalid params'
+      )
+    );
+  }
+
+  if (!code) {
+    // No recovery code present or request, this means that the action is to send
+    // a email with the recovery link
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      return next(
+        new ServerError(
+          400,
+          'invalid-params',
+          'Missing or invalid email address'
+        )
+      );
+    }
+
+    try {
+      const code = await user.generateRecoveryCode();
+      await sendEmail({
+        to: email,
+        subject: 'Password recovery email',
+        htmlBody: generatePasswordRecoveryEmail({ code, email }),
+      });
+
+      return res.status(200).json({ ok: true, action: 'email-sent' });
+    } catch (error) {
+      console.error(error);
+      return next(
+        new ServerError(
+          400,
+          AuthorizartionErrorCodes.UNABLE_TO_SEND_EMAIL,
+          'Unable to send the email, either the service is unavailable of email is bad'
+        )
+      );
+    }
+  } else {
+    const user = await UserModel.findOne({ recoveryCode: code });
+    if (!user) {
+      return next(
+        new ServerError(
+          400,
+          AuthorizartionErrorCodes.INVALID_RECOVERY_CODE,
+          "The code used is invalid, either was already used, or doesn't exist in database"
+        )
+      );
+    }
+
+    if (password.length < 6 || password.length > 12) {
+      return next(
+        new ServerError(400, 'invalid-params', 'Password length invalid')
+      );
+    }
+
+    user.password = password;
+    user.recoveryCode = null;
+    await user.save();
+
+    return res.status(200).json({
+      ok: true,
+      action: 'password-updated',
+    });
+  }
+};
+
 /**
  * Authenticate the User agains the Autentication System.
  * Generates an brand new access token and refresh token.
@@ -268,8 +349,8 @@ export const signIn = async (
   const { email, password } = req.body;
   try {
     const user = await UserModel.findOne({ email }).orFail();
-
     const match = await user.isValidPassword(password);
+
     if (!match) {
       next(
         new ServerError(
@@ -283,13 +364,19 @@ export const signIn = async (
 
     const accessToken = await generateAccessToken(user.id);
     const refreshToken = await RefreshToken.createToken(user);
-    return res.json({
+
+    res.json({
       ok: true,
       accessToken,
       refreshToken,
       username: user.username,
       isAdmin: user.isAdmin,
     });
+
+    // if signed in, this means that the recoveryCode is no longer needed
+    // delete it from the database **after** response send
+    user.recoveryCode = null;
+    await user.save();
   } catch (error) {
     next(
       new ServerError(400, DatabaseErrorCodes.USER_NOT_FOUND, 'User not found')

@@ -13,6 +13,8 @@ export type TokenErrorCodes =
 
 export type AuthorizationErrorCodes =
   | TokenErrorCodes
+  | 'invalid-recovery-code'
+  | 'unable-to-send-email'
   | 'email-in-use'
   | 'invalid-password'
   | 'user-not-found'
@@ -20,6 +22,12 @@ export type AuthorizationErrorCodes =
   | 'forbidden';
 
 export const AuthorizartionErrorCodes = {
+  /** The code used is invalid, either was already used, or doesn't exist in database */
+  INVALID_RECOVERY_CODE: 'invalid-recovery-code' as AuthorizationErrorCodes,
+
+  /** Unable to send the email, either the service is unavailable of email is bad */
+  UNABLE_TO_SEND_EMAIL: 'unable-to-send-email' as AuthorizationErrorCodes,
+
   /** The email has already been used by another user, and hence, no new user can be created  */
   EMAIL_IN_USE: 'email-in-user' as AuthorizationErrorCodes,
 
