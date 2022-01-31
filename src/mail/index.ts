@@ -25,13 +25,12 @@ export const checkMailServiceStatus = () => transporter.verify();
 
 /**
  * Send a test email.
- * @param to Comma separated list or an array of recipients' e-mail addresses
  * @returns If the email was send successfully or not.
  */
-export const sendTestMail = (to: string) =>
+export const sendTestMail = () =>
   transporter
     .sendMail({
-      to,
+      to: 'omer.marquezt@gmail.com',
       subject: 'Email Service Test',
       html: "<b>There is a new article. It's about sending emails, check it out!</b>",
     })

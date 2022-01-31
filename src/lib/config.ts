@@ -20,6 +20,7 @@ const getEnvVariable = (varName: string) => {
  */
 const variables = {
   JWT_SECRET_KEY: getEnvVariable('JWT_SECRET_KEY'),
+  SECRET_SIGNUP_KEY: getEnvVariable('SECRET_SIGNUP_KEY'),
 
   DB_USER: getEnvVariable('DB_USER'),
   DB_PASSWORD: getEnvVariable('DB_PASSWORD'),

@@ -10,7 +10,7 @@ import { notFound, errorHandler } from 'middlewares/errors';
 import { sendAPIDocumentationFile } from 'routes/docs';
 import { fileServiceRouter } from 'file-storage/router';
 import { parser } from 'middlewares/parser';
-import { checkMailServiceStatus, sendTestMail } from 'mail';
+import { checkMailServiceStatus } from 'mail';
 
 const app: Express = express();
 

@@ -23,7 +23,25 @@ const { devMode } = variables;
 
 const log = debug('auth:controller');
 
-// --------------------- Middlewares
+// --------------------- MIDDLEWARES
+/**
+ * Validates that the request made contains the secret key expected in the body,
+ * this secret key is intended to be used to limit the creation of new users.
+ */
+export const validateSecret = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const secret = req.body.secret_signup_code;
+
+  if (!secret || secret !== variables.SECRET_SIGNUP_KEY) {
+    next(new ServerError(403, 'forbidden', 'Unable to process request'));
+  } else {
+    next();
+  }
+};
+
 /**
  * Checks whether the email passed on the body is already in use the database.
  */

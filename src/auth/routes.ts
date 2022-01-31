@@ -9,6 +9,7 @@ import {
   signOut,
   updateCredentials,
   isAuth,
+  validateSecret,
 } from './controller';
 
 /**
@@ -20,7 +21,7 @@ const authRouter = express.Router();
  * Endpoint to create a new user, check if the email passed is not already in use
  * to ensure uniqueness in the database.
  */
-authRouter.post('/', checkEmailInUse, createUser);
+authRouter.post('/', validateSecret, checkEmailInUse, createUser);
 
 /**
  *
