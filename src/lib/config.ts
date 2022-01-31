@@ -30,6 +30,13 @@ const variables = {
 
   devMode: process.env.NODE_ENV === 'development',
   PORT: process.env.PORT || 5000,
+
+  mailService: {
+    password: getEnvVariable('MAIL_PASSWORD'),
+    user: getEnvVariable('MAIL_USERNAME'),
+    host: getEnvVariable('MAIL_HOST'),
+    port: parseInt(getEnvVariable('MAIL_PORT'), 10),
+  },
 };
 
 export { variables };
