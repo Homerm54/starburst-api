@@ -19,7 +19,7 @@ const getEnvVariable = (varName: string) => {
  * depending on the .env file
  */
 const variables = {
-  CLIENT_PORT: getEnvVariable('CLIENT_PORT'),
+  CLIENT_PORT: getEnvVariable('PORT'),
 
   JWT_SECRET_KEY: getEnvVariable('JWT_SECRET_KEY'),
   SECRET_SIGNUP_KEY: getEnvVariable('SECRET_SIGNUP_KEY'),
