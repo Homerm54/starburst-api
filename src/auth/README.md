@@ -29,3 +29,13 @@ The system will work storing the tokens in the database, keeping a "token histor
 ## Sign Out
 
 The sign out process just invalidates any active token, needing to sign in again on every device.
+
+## Account Recovery
+
+### Password
+
+Using the email service, any user can recover a forgotten password, using a **Passwrd reset email**, the worldwide method used.
+
+### Email
+
+To change the email, the used must be already be logged in, and must send the credentials, just like signin in.

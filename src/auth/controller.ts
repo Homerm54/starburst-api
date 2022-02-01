@@ -105,7 +105,7 @@ export const isAuth = async (
         next(
           new ServerError(
             401,
-            AuthorizartionErrorCodes.INVALID_REFRESH_TOKEN,
+            AuthorizartionErrorCodes.INVALID_ACCESS_TOKEN,
             'Unauthorized Request'
           )
         );
@@ -259,20 +259,36 @@ export const updateCredentials = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { email, uid } = req.body;
+  const { email, uid, password } = req.body;
+
+  if (!password) {
+    return next(
+      new ServerError(401, 'invalid-params', 'Must send credentials')
+    );
+  }
+
+  const user = await UserModel.findOne({ _id: uid });
+  if (!user) {
+    return next(
+      new ServerError(
+        401,
+        AuthorizartionErrorCodes.INVALID_ACCESS_TOKEN,
+        'Endpoint called with an invalid access token'
+      )
+    );
+  }
+
+  if (!user.isValidPassword(password)) {
+    return next(
+      new ServerError(
+        401,
+        AuthorizartionErrorCodes.INVALID_CREDENTIALS,
+        'Unable to authenticate'
+      )
+    );
+  }
 
   if (email) {
-    const user = await UserModel.findOne({ _id: uid });
-    if (!user) {
-      return next(
-        new ServerError(
-          401,
-          AuthorizartionErrorCodes.INVALID_ACCESS_TOKEN,
-          'Endpoint called with an invalid access token'
-        )
-      );
-    }
-
     user.email = email;
     await user.save();
     return res.json({
