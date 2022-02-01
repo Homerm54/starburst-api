@@ -252,13 +252,45 @@ export const deleteUser = async (
 };
 
 /**
- * TODO: Bad, raw, replace by update email and/or password
+ * Allow to update authentication credentials.
  */
-export const updateCredentials = async (req: Request, res: Response) => {
-  return res.json({ ok: true });
+export const updateCredentials = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { email, uid } = req.body;
+
+  if (email) {
+    const user = await UserModel.findOne({ _id: uid });
+    if (!user) {
+      return next(
+        new ServerError(
+          401,
+          AuthorizartionErrorCodes.INVALID_ACCESS_TOKEN,
+          'Endpoint called with an invalid access token'
+        )
+      );
+    }
+
+    user.email = email;
+    await user.save();
+    return res.json({
+      ok: true,
+      action: 'email-update',
+    });
+  }
+
+  return next(
+    new ServerError(
+      400,
+      'invalid-params',
+      'Endpoint called with invalid params'
+    )
+  );
 };
 
-export const sendPasswordRecoveryEmail = async (
+export const recoverPassword = async (
   req: Request,
   res: Response,
   next: NextFunction
