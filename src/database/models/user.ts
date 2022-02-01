@@ -3,6 +3,7 @@ import { Schema, model } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
 import { User } from 'database/types';
+import { v4 as uuidv4 } from 'uuid';
 
 const saltRounds = 12;
 
@@ -94,6 +95,15 @@ UserSchema.methods.isValidPassword = async function (password) {
   );
 
   return compare;
+};
+
+UserSchema.methods.generateRecoveryCode = async function () {
+  const code = uuidv4();
+
+  this.recoveryCode = code;
+  await this.save();
+
+  return code;
 };
 
 // Single Connection Model

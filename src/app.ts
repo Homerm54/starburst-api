@@ -10,6 +10,7 @@ import { notFound, errorHandler } from 'middlewares/errors';
 import { sendAPIDocumentationFile } from 'routes/docs';
 import { fileServiceRouter } from 'file-storage/router';
 import { parser } from 'middlewares/parser';
+import { checkMailServiceStatus } from 'mail';
 
 const app: Express = express();
 
@@ -54,8 +55,10 @@ app.use(errorHandler);
 // ---------------- SERVER INIT ------------------------
 // first connect to database, then start listen to request on PORT
 db.init()
+  // DB Service Started, check Mail Service status
+  .then(checkMailServiceStatus)
   .then(() => {
-    /** Server */
+    /** Server start */
     app.listen(variables.PORT, () =>
       console.log(`REST API ready on port: ${variables.PORT}`)
     );

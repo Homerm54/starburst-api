@@ -41,6 +41,13 @@ export interface User extends ITimestamps, Document {
   isAdmin: boolean;
 
   /**
+   * The uuid code used to perform recover actions for this account.
+   * Just a fancy name to say this is the code that is sent via email, and used to check
+   * that the one that request the action has access to the email of the user.
+   */
+  recoveryCode: string | null;
+
+  /**
    * The Refresh Token used by the File Storage system to generate new Access Tokens
    * and allow interaction between this API, and teh File Storage API.
    *
@@ -58,4 +65,7 @@ export interface User extends ITimestamps, Document {
    * @returns {Boolean} Whether the password is correct or not
    */
   isValidPassword: (password: string) => Promise<boolean>;
+
+  /** Generate a recovery code for the given user */
+  generateRecoveryCode: () => Promise<string>;
 }

@@ -19,7 +19,10 @@ const getEnvVariable = (varName: string) => {
  * depending on the .env file
  */
 const variables = {
+  CLIENT_PORT: getEnvVariable('CLIENT_PORT'),
+
   JWT_SECRET_KEY: getEnvVariable('JWT_SECRET_KEY'),
+  SECRET_SIGNUP_KEY: getEnvVariable('SECRET_SIGNUP_KEY'),
 
   DB_USER: getEnvVariable('DB_USER'),
   DB_PASSWORD: getEnvVariable('DB_PASSWORD'),
@@ -30,6 +33,13 @@ const variables = {
 
   devMode: process.env.NODE_ENV === 'development',
   PORT: process.env.PORT || 5000,
+
+  mailService: {
+    PASSWORD: getEnvVariable('MAIL_PASSWORD'),
+    USER: getEnvVariable('MAIL_USERNAME'),
+    HOST: getEnvVariable('MAIL_HOST'),
+    PORT: parseInt(getEnvVariable('MAIL_PORT'), 10),
+  },
 };
 
 export { variables };
