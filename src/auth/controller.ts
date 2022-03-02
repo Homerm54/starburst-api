@@ -490,9 +490,9 @@ export const refreshAccessToken = async (
       return;
     }
 
-    const isValid = await RefreshToken.verifyExpiration(token);
+    const expired = await RefreshToken.verifyExpiration(token);
 
-    if (isValid) {
+    if (!expired) {
       const user = await UserModel.findOne({ _id: token.user });
       if (!user) {
         next(

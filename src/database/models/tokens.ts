@@ -46,13 +46,14 @@ RefreshTokenSchema.statics.createToken = async function (user) {
   if (tokenInstance) {
     // Updates token in DB with a new random token, this is the rotatory token system
     tokenInstance.token = _token;
+    tokenInstance.expiryDate = expiredAt;
     await tokenInstance.save();
   } else {
     // In case the user doesn't have any refresh token, a new one is created
     const docInstance = new this({
       token: _token,
       user: user._id,
-      expiryDate: expiredAt.getTime(),
+      expiryDate: expiredAt,
     });
 
     await docInstance.save();
@@ -62,7 +63,10 @@ RefreshTokenSchema.statics.createToken = async function (user) {
 };
 RefreshTokenSchema.statics.verifyExpiration = (token) => {
   // Check if token is falsy, can happen in case the user logged out
-  const expired = token.token ? Date.now() < token.expiryDate.getTime() : true;
+  console.log(`Current time: ${Date.now()}`);
+  console.log(`Token time: ${token.expiryDate.getTime()}`);
+
+  const expired = token.token ? Date.now() >= token.expiryDate.getTime() : true;
   return expired;
 };
 
