@@ -313,7 +313,7 @@ export const recoverPassword = async (
 ) => {
   const { email, code, password } = req.body;
 
-  if (!email || !(code && password)) {
+  if (!email && !(code && password)) {
     return next(
       new ServerError(
         400,
