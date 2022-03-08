@@ -186,6 +186,8 @@ export const createUser = async (
       ok: true,
       accessToken,
       refreshToken,
+      uid: newUser.id,
+      email: newUser.email,
       isAdmin: newUser.isAdmin,
       username: newUser.username,
     });
@@ -417,6 +419,8 @@ export const signIn = async (
       ok: true,
       accessToken,
       refreshToken,
+      uid: user.id,
+      email: user.email,
       username: user.username,
       isAdmin: user.isAdmin,
     });
