@@ -477,6 +477,21 @@ const getFileThumbnail = () => {
   // TODO:
 };
 
+const getFolder = async (accessToken: string, path: string) => {
+  const res = await dropboxAuthAPI.post(
+    '/files/list_folder',
+    { path },
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  console.log(res.data.entries);
+  return res.data.entries;
+};
+
 /**
  * Deletes a file *or folder* at a given path.
  * If the path is a folder, all its contents will be deleted too.
@@ -546,6 +561,7 @@ const files = {
     file: getFile,
     thumbnail: getFileThumbnail,
     preview: getFilePreview,
+    folder: getFolder,
   },
   delete: deleteFileOrFolder,
 };

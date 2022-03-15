@@ -1,15 +1,15 @@
 import {
-  deleteFile,
+  deleteItem,
   downloadFile,
   finishAuthFlow,
   generateRefreshToken,
+  getFolder,
   getUserMetadata,
   uploadFile,
 } from 'file-storage/router/controller';
 import express, { NextFunction, Request, Response } from 'express';
 import { isAuth } from 'auth/controller';
 import multer from 'multer';
-import { variables } from 'lib/config';
 import { ServerError } from 'lib/error';
 import { FileStorageErrorCodes } from 'file-storage/error';
 
@@ -50,20 +50,20 @@ router.post('/finish-auth-flow', isAuth, finishAuthFlow);
 // Account section
 router.get('/account-data', isAuth, isFileServiceAuth, getUserMetadata);
 
-// Files CRUD Section for testing only
-if (variables.devMode) {
-  router.get('/:path(*)', isFileServiceAuth, downloadFile);
-  router.delete('/:path(*)', isFileServiceAuth, deleteFile);
-  router.post(
-    '/upload',
-    isFileServiceAuth,
-    (req, res, next) => {
-      req.params.accessToken = req.body.file_service_token;
-      next();
-    },
-    fileMiddleware,
-    uploadFile
-  );
-}
+router.get('/file', isAuth, isFileServiceAuth, downloadFile);
+router.delete('/item', isAuth, isFileServiceAuth, deleteItem);
+router.post(
+  '/upload',
+  isAuth,
+  isFileServiceAuth,
+  (req, res, next) => {
+    req.params.accessToken = req.body.file_service_token;
+    next();
+  },
+  fileMiddleware,
+  uploadFile
+);
+
+router.get('/folder', isAuth, isFileServiceAuth, getFolder);
 
 export { router as fileServiceRouter, isFileServiceAuth };

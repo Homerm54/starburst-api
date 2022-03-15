@@ -98,9 +98,10 @@ const generateRefreshToken = async (
 // Enpoints to upload files are for testing only, no futher refinement is done
 const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
   const { file } = req;
-  const path = req.headers['File-Storage-Args'];
-
-  if (!file || !path) {
+  const path = req.headers['file-storage-args'];
+  console.log(req.headers);
+  console.log(file, path);
+  if (!file) {
     next(
       new ServerError(400, 'invalid-params', 'There is no file in the request')
     );
@@ -108,7 +109,7 @@ const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
     await files.upload(
       req.params.accessToken,
       file.buffer,
-      `${path}/${file.originalname}`,
+      `${path || ''}/${file.originalname}`,
       true
     );
     res.send(true);
@@ -118,7 +119,7 @@ const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
 const downloadFile = async (req: Request, res: Response) => {
   const [file, metadata] = await files.get.file(
     req.body.file_service_token,
-    `/${req.params.path}`
+    `${req.body.path}`
   );
 
   res.setHeader('Content-Type', metadata.mimetype);
@@ -126,14 +127,27 @@ const downloadFile = async (req: Request, res: Response) => {
   res.send(file);
 };
 
-const deleteFile = async (req: Request, res: Response) => {
-  console.log(req.params.path);
+const deleteItem = async (req: Request, res: Response, next: NextFunction) => {
+  const path = req.headers['file-storage-args'];
+  if (!path || typeof path !== 'string') {
+    return next('error');
+  }
 
-  const file = await files.delete(
-    req.body.file_service_token,
-    `/${req.params.path}`
-  );
+  const file = await files.delete(req.body.file_service_token, path);
   res.send(file);
+};
+
+const getFolder = async (req: Request, res: Response, next: NextFunction) => {
+  const path = req.headers['file-storage-args'];
+  console.log(path);
+  if (typeof path !== 'string') {
+    return next('error');
+  }
+
+  const folderData = await files.get.folder(req.body.file_service_token, path);
+  console.log(folderData);
+
+  return res.json(folderData);
 };
 
 export {
@@ -142,5 +156,6 @@ export {
   finishAuthFlow,
   uploadFile,
   downloadFile,
-  deleteFile,
+  deleteItem,
+  getFolder,
 };
