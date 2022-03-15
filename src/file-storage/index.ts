@@ -142,7 +142,7 @@ const getSpaceAnalitics = async (accessToken: string) => {
 
     // The Folder Scoped Apps has all the path params relative to the app folder,
     // so that passing an empty string is the way to indicate the app's root folder
-    const [files, spaceUsed] = await getFolderAnalitics(accessToken, {
+    const [spaceUsed, files] = await getFolderAnalitics(accessToken, {
       path: ``,
     });
 
