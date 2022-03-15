@@ -98,9 +98,9 @@ const generateRefreshToken = async (
 // Enpoints to upload files are for testing only, no futher refinement is done
 const uploadFile = async (req: Request, res: Response, next: NextFunction) => {
   const { file } = req;
-  const path = req.params.path;
+  const path = req.headers['File-Storage-Args'];
 
-  if (!file) {
+  if (!file || !path) {
     next(
       new ServerError(400, 'invalid-params', 'There is no file in the request')
     );

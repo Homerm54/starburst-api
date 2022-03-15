@@ -55,7 +55,7 @@ if (variables.devMode) {
   router.get('/:path(*)', isFileServiceAuth, downloadFile);
   router.delete('/:path(*)', isFileServiceAuth, deleteFile);
   router.post(
-    '/upload/:path(*)',
+    '/upload',
     isFileServiceAuth,
     (req, res, next) => {
       req.params.accessToken = req.body.file_service_token;
