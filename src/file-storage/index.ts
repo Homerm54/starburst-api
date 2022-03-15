@@ -87,7 +87,7 @@ const getFolderAnalitics = async (
   // the result, this way, this function will call itself recursively until all the files
   // from the same top folder are retrieved and analyzed
   if (res.data.has_more && res.data.cursor) {
-    const [accumulativeFiles, accumulativeSize] = await getFolderAnalitics(
+    const [accumulativeSize, accumulativeFiles] = await getFolderAnalitics(
       accessToken,
       {
         path: data.path,
@@ -106,7 +106,7 @@ const getFolderAnalitics = async (
   if (subFolders.length > 0) {
     await Promise.all(
       subFolders.map(async (folder) => {
-        const [accumulativeFiles, accumulativeSize] = await getFolderAnalitics(
+        const [accumulativeSize, accumulativeFiles] = await getFolderAnalitics(
           accessToken,
           {
             path: folder,
